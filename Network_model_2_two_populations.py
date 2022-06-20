@@ -346,6 +346,7 @@ def Network_model_2(sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, sca
 
     M_E = SpikeMonitor(G_ex, record=True, name='Spikemonitor')
     M_I = SpikeMonitor(G_in, record=True, name='Spikemonitor2')
+    M_DS = EventMonitor(G_ex, event='dendritic_event', record=True, name='Dendriticspikemon')
     R_E = PopulationRateMonitor(G_ex, name='Ratemonitor')
     R_I = PopulationRateMonitor(G_in, name='Ratemonior2')
     #DS = EventMonitor(G_ex, record=True, 'dendritic_event', name='DSpikemonitor')
@@ -353,7 +354,7 @@ def Network_model_2(sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, sca
     SM_G_ex = StateMonitor(G_ex, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec', 'I_DS', 'n', 'y', 'z', 'r'), record=neurons_exc, name='Statemonitor')
     SM_G_in = StateMonitor(G_in, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec'), record=neurons_inh, name='Statemonitor2')
     
-    monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in]
+    monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in, M_DS]
 
     # Store the current state of the network
     net.add(monitors)

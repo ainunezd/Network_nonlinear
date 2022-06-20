@@ -31,22 +31,23 @@ from Network_model_2_two_populations import Network_model_2
 # ----------------------------names and folders-------------------------
 
 path_to_save_figures = '/home/nunez/Network_nonlinear/Plots/'
-path_networks = '/home/nunez/Network_nonlinear/stored_networks/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 name_network = 'long_random_network'
 
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=20
+dur_simulation=6000
 network, monitors = Network_model_2(sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
-#network.store(name='rand_net', filename = path_networks + name_network)
+network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + 'long_random_network')
 
 # Get monitors from the network
-M_E = network.sorted_objects[-18]
-M_I = network.sorted_objects[-17]
+M_E = network.sorted_objects[-19]
+M_I = network.sorted_objects[-18]
+M_DS = network.sorted_objects[-16]
 R_E = network.sorted_objects[-1]
 R_I = network.sorted_objects[-2]  
 State_G_ex = network.sorted_objects[2]
@@ -171,7 +172,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
     
         time = events_dict[event]['Time_array']
         signal_event = events_dict[event]['Signal_array']
-        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 3/dt, prominence=1, width=[1000,3000])
+        peaks, props = signal.find_peaks(signal_event, height = simulation_dict['Baseline'], distance = 3/dt, prominence=1, width=[1000,3000])
 #        index_out = where(props['prominences'] < 1)[0]
         left_bases = props['left_bases']
         right_bases = props['right_bases']
@@ -225,7 +226,12 @@ def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, threshold_in_sd, 
     events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
     
     for event in events_dict.keys():
-        start
+        start_time = events_dict[event]['Index_start']*dt
+        end_time = events_dict[event]['Index_end']*dt
+        mask = where(np.logical_and(pop_spikes_monitor.t/ms > start_time, pop_spikes_monitor.t/ms < end_time))[0]
+        index_neurons = pop_spikes_monitor.i[mask]
+        hist(index_neurons, bins=len(n_group), range=(0,len(n_group)))
+        
         time = events_dict[event]['Time_array']
         signal_event = events_dict[event]['Signal_array']
         Oscilla
