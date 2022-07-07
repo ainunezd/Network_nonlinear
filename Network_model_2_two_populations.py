@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from brian2 import *
 from brian2 import ms, mV
 
-def Network_model_2(sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1):
+def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
@@ -41,7 +41,7 @@ def Network_model_2(sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, sca
     start_scope()
     defaultclock.dt = 0.001*ms
 
-    seed(333)
+    seed(seed_num)
 # ------------------------------Parameters for populations-------------------------
 
     # Constant variables for populations
