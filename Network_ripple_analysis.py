@@ -39,12 +39,12 @@ path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plot
 path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
-name_network = 'long_random_network'
+name_network = 'long_random_network_3'
 
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
-network, monitors = Network_model_2(seed_num=111, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
 #network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -64,7 +64,7 @@ dt = 0.001
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=False):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, plot_peaks=False):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -79,12 +79,12 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=False):
     
     '''
     rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
-    thr = mean(rate_signal) + threshold_in_sd * std(rate_signal) 
+    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
     peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 50/dt)
     time = pop_rate_monitor.t / ms
 
     if plot_peaks:
-        pdf_file_name = f'Events_detected_G_E_tr_{threshold_in_sd}_{name_network}'
+        pdf_file_name = f'Events_detected_G_E_tr_{threshold_in_sd}_{name_net}'
         with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
             fig = figure()
             plot(time, rate_signal, c='k')
@@ -108,12 +108,12 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fal
     returns
         
     '''
-    n_group=G_E
-    pop_rate_monitor=R_E
-    threshold_in_sd=4
-    
-    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=plot_peaks_bool)
-    baseline = mean(pop_rate_signal)
+#    n_group=G_E
+#    pop_rate_monitor=R_E
+#    threshold_in_sd=3
+#    
+    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=True)
+    baseline = mean(pop_rate_signal[:int(400/dt)]) # Change BASELINE to only the mean of first 400 ms.
     event_props = {}
     simulation_props = {}
     simulation_props['Total_time'] = time_signal
@@ -153,20 +153,29 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fal
         event_props[i+1]['Index_start']= start_event_approx + start_index
         event_props[i+1]['Index_end']= start_event_approx + end_index
                 
-    return event_props, simulation_props
-        
+#    return event_props, simulation_props
+#        figure()
 #        plot(time_event, event, 'k')
 #        axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
-#        scatter(time_event[peaks], event[peaks], c='orange')                
-        
-#        plot(time_ranged, event_ranged, 'k')
-#        axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
-#        scatter(time_ranged[peaks], event_ranged[peaks], c='orange')        
-#        scatter(time_ranged[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
-#        scatter(time_ranged[start_index], event_ranged[start_index], c='b')
-#        scatter(time_ranged[end_index], event_ranged[end_index], c='b')
-
-        
+#        scatter(time_event[peaks[first_peak_index:last_peak_index+1]-start_index], event[peaks[first_peak_index:last_peak_index+1]-start_index], c='orange')                
+        if plot_peaks_bool:
+            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}'
+            with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+                fig = figure(figsize=(10/cm, 10/cm))
+    
+                plot(time_ranged, event_ranged, 'k')
+                axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
+                scatter(time_ranged[peaks], event_ranged[peaks], c='orange')        
+                scatter(time_ranged[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
+                scatter(time_ranged[start_index], event_ranged[start_index], c='b', label='Start_end')
+                scatter(time_ranged[end_index], event_ranged[end_index], c='b')
+                legend()
+                gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', title=f'Network_{name_network[-1]}_Event_{i+1}')
+    
+                savefig(path_to_save_figures + pdf_file_name +'.png')
+                pdf.savefig(fig)
+            
+    return event_props, simulation_props
         
 def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False):
     '''
@@ -262,29 +271,37 @@ def plot_all_events_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_even
     mean_freq = np.zeros(num_events)
     
     colors = cmr.take_cmap_colors('viridis', num_events, return_fmt='hex') 
-    fig = plt.figure(figsize=(21/cm,10/cm))
-    gs0 = gridspec.GridSpec(1, 3, figure=fig, wspace=1/cm, hspace=0/cm)
-    ax1 = fig.add_subplot(gs0[0])
-    ax2 = fig.add_subplot(gs0[1])
-    ax3 = fig.add_subplot(gs0[2])
-    for i, event in enumerate(events_dict.keys()):
-        num_peaks[i] = events_dict[event]['Num_peaks']
-        durations[i] = events_dict[event]['Duration']
-        mean_freq[i] = events_dict[event]['Mean_frequency']
-        time_array = events_dict[event]['Time_array']
-        freq_index = events_dict[event]['Indices_frequency']
-        instant_freq = events_dict[event]['Instant_frequency']
-        ax3.plot(time_array[freq_index], instant_freq, color=colors[i], marker='o')
-        ax3.axhline(mean_freq[i], min(time_array), max(time_array), c=colors[i], linestyle='--')
-    
-    ax1.bar(arange(num_events)+1, num_peaks, color=colors)
-    ax1.set_xticks(arange(num_events)+1)    
-    ax1.set(xlabel='Event', ylabel='Number of peaks', title='Peaks per event')    
-    ax2.bar(arange(num_events)+1, durations, color=colors)
-    ax2.set_xticks(arange(num_events)+1)         
-    ax2.set(xlabel='Event', ylabel='Duration [ms]', title='Duration of event')
-    
-    ax3.set(xlabel='Time wrt. highest peak[ms]', ylabel='Frequency[Hz]', title='Instanteneous frequency')
+    pdf_file_name = f'All_events_prop_G_E_tr_{threshold_in_sd}_{name_network}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig = plt.figure(figsize=(21/cm,10/cm))
+        gs0 = gridspec.GridSpec(1, 3, figure=fig, wspace=1/cm, hspace=0/cm)
+        ax1 = fig.add_subplot(gs0[0])
+        ax2 = fig.add_subplot(gs0[1])
+        ax3 = fig.add_subplot(gs0[2])
+        for i, event in enumerate(events_dict.keys()):
+            num_peaks[i] = events_dict[event]['Num_peaks']
+            durations[i] = events_dict[event]['Duration']
+            mean_freq[i] = events_dict[event]['Mean_frequency']
+            time_array = events_dict[event]['Time_array']
+            freq_index = events_dict[event]['Indices_frequency']
+            instant_freq = events_dict[event]['Instant_frequency']
+            ax3.plot(time_array[freq_index], instant_freq, color=colors[i], marker='o')
+            ax3.axhline(mean_freq[i], min(time_array), max(time_array), c=colors[i], linestyle='--')
+        
+        ax1.bar(arange(num_events)+1, num_peaks, color=colors)
+        ax1.set_xticks(arange(num_events)+1)    
+        ax1.set(xlabel='Event', ylabel='Number of peaks', title='Peaks per event')    
+        ax2.bar(arange(num_events)+1, durations, color=colors)
+        ax2.set_xticks(arange(num_events)+1)         
+        ax2.set(xlabel='Event', ylabel='Duration [ms]', title='Duration of event')
+        
+        ax3.set(xlabel='Time wrt. highest peak[ms]', ylabel='Frequency[Hz]', title='Instanteneous frequency')
+        
+        fig.suptitle(f'Events of network {name_network[-1]}')
+        
+        savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)
+
         
 def get_index_neurons_from_window_of_time(monitor, time_1, time_2):
     '''
@@ -334,6 +351,7 @@ def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor
                 list_neurons.append(neuron)
                 spikes_per_neuron.append(len(neurons_spike[neuron]))
             gssub = gs0[i,0].subgridspec(1, 2)
+            plt.suptitle("GridSpec Inside GridSpec")
             ax_hist = fig.add_subplot(gssub[0])
             ax_isi = fig.add_subplot(gssub[1])
             ax_hist.bar(list_neurons, spikes_per_neuron, color='k')
@@ -383,18 +401,82 @@ def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)
 
-
-        
-#        fig, ax = subplots(1,2, sharey=True, figsize=(20/cm,10/cm))
-#        ax[0].hist(neurons_no_event_spike, bins=len(n_group), range=(0,len(n_group)))
-#        ax[1].hist(neurons_no_event_DS, bins=len(n_group), range=(0,len(n_group)))
-#        suptitle('Baseline')
-#
-#        
-#        time = events_dict[event]['Time_array']
-#        signal_event = events_dict[event]['Signal_array']
-#        Oscilla
+def plot_stored_networks_full_simulation():
+    '''
+    Function to plot all simulation for some networks to observe if there is a baseline
+    '''
+    base_name = 'long_random_network'
+    add_name = ['', '_2', '_3', '_4', '_5']
     
+    for complement in add_name:
+        network_name_complement = base_name+complement
+        print(network_name_complement)
+            
+    
+        # In order to restore the long network it is necessary to first create an object.
+        # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
+        dur_simulation=10
+        network, monitors = Network_model_2(seed_num=111, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
+        #network.store(name='rand_net', filename = path_networks + name_network)
+        
+        network.restore(name='rand_net', filename = path_networks + network_name_complement)
+        
+        # Get monitors from the network
+        M_E = network.sorted_objects[-19]   
+        M_I = network.sorted_objects[-18]
+        M_DS = network.sorted_objects[-16]
+        R_E = network.sorted_objects[-1]
+        R_I = network.sorted_objects[-2]  
+        State_G_ex = network.sorted_objects[2]
+        State_G_in = network.sorted_objects[3]
+        G_E = network.sorted_objects[0]
+        G_I = network.sorted_objects[1]
+        
+        find_events(G_E, R_E, 3, name_net=network_name_complement, plot_peaks=True)
+
+
+def plot_scatter_spikes(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd, plot_peaks_bool=False):
+    '''
+    Function to plot number of dendritic spikes vs number of spikes per NEURON in the network (first only excitatory neurons)
+    '''
+    events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
+    total_events = len(events_dict.keys())
+    colors = cmr.take_cmap_colors('viridis', total_events, return_fmt='hex') 
+
+    pdf_file_name = f'Spiking_relation_G_E_th_{threshold_in_sd}_Net_{name_network[-1]}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = subplots(total_events, 1, figsize=(18/cm,23.7/cm), sharex=True, sharey=True)
+        
+        for i, event in enumerate(events_dict.keys()):
+            start_time = events_dict[event]['Index_start']*dt
+            end_time = events_dict[event]['Index_end']*dt
+            neurons_spike, isi_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time, end_time)
+            neurons_DS, isi_DS = get_index_neurons_from_window_of_time(pop_event_monitor, start_time, end_time)
+    #        neurons_no_event_spike, isi_noSWR_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time-100, end_time-100)
+    #        neurons_no_event_DS, isi_noSWR_DS_spikes = get_index_neurons_from_window_of_time(pop_event_monitor, start_time-100, end_time-100)
+            array_all_spikes= np.zeros((len(n_group.i), 2))
+            for index in n_group.i:
+                if index in neurons_DS: array_all_spikes[index, 0] = len(neurons_DS[index])
+                else: array_all_spikes[index, 0] = 0
+                if index in neurons_spike: array_all_spikes[index, 1] = len(neurons_spike[index])
+                else: array_all_spikes[index, 1] = 0
+                    
+            points = list(set(zip(array_all_spikes[:,0],array_all_spikes[:,1])))
+            count = [len([x for x,y in zip(array_all_spikes[:,0],array_all_spikes[:,1]) if x==p[0] and y==p[1]]) for p in points]
+            plot_x=[i[0] for i in points]
+            plot_y=[i[1] for i in points]
+            count=np.array(count)
+            pl = ax[i].scatter(plot_x,plot_y,c=count,s=100*count**0.5,cmap='viridis', vmin=0, vmax=250)
+            ax[i].set(ylabel='Number of spikes')
+            ax[i].set_ylim(bottom=-1)
+            plt.colorbar(pl, ax=ax[i])
+        ax[i].set(xlabel='Number of dendritic spikes')
+        fig.suptitle('Spikes per neuron and event')
+#            ax[i].scatter(array_all_spikes[:,0], array_all_spikes[:,1], color=colors[i])
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)        
+        
+
     
 
 
