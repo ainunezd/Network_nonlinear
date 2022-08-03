@@ -35,16 +35,16 @@ from Network_model_2_two_populations import Network_model_2
 
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
-name_network = 'long_random_network_3'
+name_network = 'long_allneurons_event_network_3'
 
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=10*ms, total_neurons=1000, scale_factor=1)
 #network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -79,7 +79,8 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
     
     '''
     rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
-    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
+#    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
+    thr = mean(rate_signal[int(200/dt):]) + threshold_in_sd * std(rate_signal) 
     peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 50/dt)
     time = pop_rate_monitor.t / ms
 
@@ -88,11 +89,11 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
         with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
             fig = figure()
             plot(time, rate_signal, c='k')
-            scatter(peaks*dt, rate_signal[peaks], c='r')
+            scatter(time[0] + peaks*dt, rate_signal[peaks], c='r')
             axhline(y=thr, c='gray', linestyle='--', label='Peak threshold')
-            axhline(y=mean(rate_signal), c='gray', linestyle='dotted', label='Baseline')
+            axhline(y=mean(rate_signal[int(200/dt):]), c='gray', linestyle='dotted', label='Baseline')
             legend()
-            gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(0,max(time)))
+            gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
             savefig(path_to_save_figures + pdf_file_name +'.png')
             pdf.savefig(fig)
 
@@ -476,6 +477,43 @@ def plot_scatter_spikes(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)        
         
+
+def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_monitor):
+    '''
+    Function to observe how the currents in the neurons are within one event. Speciallz before and after
+    '''
+    if name_network != 'long_allneurons_event_network_3': return
+    else:        
+        pdf_file_name = f'spikes_currents_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+        with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+            fig = figure(figsize=(18/cm,12/cm))
+            gs0 = gridspec.GridSpec(6, 1, figure=fig, wspace=0.5/cm, hspace=0.5/cm )
+            
+            time = pop_rate_monitor.t/ms
+            rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
+            exc_current = mean(pop_state_monitor.I_A/nA, axis=0)
+            inh_current = mean(pop_state_monitor.I_G/nA, axis=0)
+            
+            ax_sp = fig.add_subplot(gs0[:2])
+            ax_sp.scatter(pop_spikes_monitor.t/ms, pop_spikes_monitor.i, marker='.', color='k')
+            ax_sp.set(ylabel='Neuron index', xlim=(min(time), max(time)))
+            ax_rate = fig.add_subplot(gs0[2:4], sharex=ax_sp)
+            ax_rate.plot(time, rate_signal, color='k')
+            ax_rate.set(ylabel='Rate [kHz]')
+#            ax_exc = fig.add_subplot(gs0[4])
+#            ax_exc.plot(time, exc_current, color='green', label='Excitatory')
+#            ax_exc.set(ylabel='Exc. current [nA]')
+#            ax_inh = fig.add_subplot(gs0[5])
+#            ax_inh.plot(time, abs(inh_current), color='indigo', label='Inhibitory')
+#            ax_inh.set(ylabel='Inh. current [nA]')#
+            ax_curr = fig.add_subplot(gs0[4:], sharex=ax_sp)
+            ax_curr.plot(time, exc_current, color='green', label='Excitatory')
+            ax_curr.plot(time, abs(inh_current), color='indigo', label='abs(Inhibitory)')     
+            ax_curr.set(ylabel='Current [nA]', xlabel='Time [ms]')
+            ax_curr.legend()
+            
+            plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+            pdf.savefig(fig)
 
     
 

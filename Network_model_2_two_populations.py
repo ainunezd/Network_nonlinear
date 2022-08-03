@@ -341,8 +341,8 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
 
     net.run(pre_run_dur)
 
-    neurons_exc = array([103])
-    neurons_inh = array([50])
+    neurons_exc = arange(500)
+    neurons_inh = arange(50)
 
     M_E = SpikeMonitor(G_ex, record=True, name='Spikemonitor')
     M_I = SpikeMonitor(G_in, record=True, name='Spikemonitor2')
@@ -351,8 +351,11 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     R_I = PopulationRateMonitor(G_in, name='Ratemonior2')
     #DS = EventMonitor(G_ex, record=True, 'dendritic_event', name='DSpikemonitor')
     
-    SM_G_ex = StateMonitor(G_ex, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec', 'I_DS', 'n', 'y', 'z', 'r'), record=neurons_exc, name='Statemonitor')
-    SM_G_in = StateMonitor(G_in, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec'), record=neurons_inh, name='Statemonitor2')
+#    SM_G_ex = StateMonitor(G_ex, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec', 'I_DS', 'n', 'y', 'z', 'r'), record=neurons_exc, name='Statemonitor')
+#    SM_G_in = StateMonitor(G_in, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec'), record=neurons_inh, name='Statemonitor2')
+
+    SM_G_ex = StateMonitor(G_ex, ('v', 'I_A', 'I_G'), record=True, name='Statemonitor')
+    SM_G_in = StateMonitor(G_in, ('v', 'I_A', 'I_G'), record=True, name='Statemonitor2')
     
     monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in, M_DS]
 
