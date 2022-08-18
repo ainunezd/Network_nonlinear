@@ -34,8 +34,8 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 
@@ -47,7 +47,7 @@ name_network = 'long_random_network_8'
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1, 
+network, monitors = Network_model_2(seed_num=8, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1, 
                                     dendritic_interactions=True, neurons_exc = arange(2), neurons_inh=arange(1))
 #network.store(name='rand_net', filename = path_networks + name_network)
 
@@ -136,8 +136,8 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
         end_event_appox = int(index + 70/dt)
         event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
         time_ranged = time_signal[start_event_approx:end_event_appox]
-        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
-#        peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
+#        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
+        peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
         
         index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
         
@@ -533,7 +533,7 @@ def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_
             pdf.savefig(fig)
 
     
-def wavelet_analysis_plot(n_group, pop_rate_monitor, threshold_in_sd, ):
+def wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd, ):
     '''
     Function to evaluate the ripple event based on the frequency domain and power spectrum
     '''
@@ -541,25 +541,113 @@ def wavelet_analysis_plot(n_group, pop_rate_monitor, threshold_in_sd, ):
     total_signal = sim['Total_signal']
     total_time = sim['Total_time']
     peak_indexes = sim['Max_peak_index']
+    dict_wavelet = {}
+
+    for i, event in enumerate(events.keys()):
+        dict_wavelet[event] = {}
+        start = events[event]['Index_start']
+        end = events[event]['Index_end']
+        time_event = events[event]['Time_array']
+
+        wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
+        = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start*dt, end*dt], \
+                                           expected_freq = 200, fmin=100, plot=False)
+        index_to_delete = np.where(instfreq[:len(instfreq)//2]==100)[0]
+        print(index_to_delete)
+#        if len(index_to_delete) == 0:
+#            
+        dict_wavelet[event]['Time_array'] = time_event
+        dict_wavelet[event]['Instantaneous_frequency'] = instfreq
+        dict_wavelet[event]['Instantaneous_power'] = instpower
+        dict_wavelet[event]['wspec'] = wspec
+        dict_wavelet[event]['Time_with_100_Hz'] = 0 
+#        else:
+#            dict_wavelet[event]['Time_array'] = np.delete(time_event, index_to_delete)
+#            dict_wavelet[event]['Instantaneous_frequency'] = np.delete(instfreq, index_to_delete)
+#            dict_wavelet[event]['Instantaneous_power'] = np.delete(instpower, index_to_delete)
+#            dict_wavelet[event]['wspec'] = np.delete(wspec, index_to_delete, axis=1)
+#            dict_wavelet[event]['Time_with_100_Hz'] = index_to_delete * dt
+#            
+        dict_wavelet[event]['Time_inst_freq_discrete'] = ifreq_discr_t
+        dict_wavelet[event]['inst_freq_discrete'] = ifreq_discr
+   
+    return dict_wavelet
+
+#def fill_with_nan_freq_arrays(min_time, max_time, freq_array, time_array, power_array):
+#    '''
+#    Function to create all wavelet frequency arrays of the same size in order to average with respect to the max power
+#    In order to do so, arrays of nan's will be concatenated
+#    
+#    return freq_array, time_array and power_array with the new length
+#    '''    
+#    final_time_array = np.arange(min_time, max_time, dt)
+#    final_freq_array, final_power_array = np.zeros(final_time_array.shape), np.zeros(final_time_array.shape)
+#    
+#    first_numbers = np.where(time_array[0]>final_time_array)[0]
+#    if len(first_numbers) == 0: 
+#        final_freq_array[:len(freq_array)] = freq_array
+#    else: 
+#        index_1 = first_numbers[-1] + 1
+#        final_freq_array[:index_1] = np.nan * np.ones (index_1)
+#        final_freq_array[index_1:index_1+len(freq_array)] = freq_array
+#    last_numbers = np.where(time_array[-1]<final_time_array)[0]
+#    if len(last_numbers) == 0:
+#    else:
+#        index_2 = last_numbers[0]
+#        final_freq_array[index_2:] = np.nan * np.ones (len(final_time_array)-index_2)
+            
+    
+        
+
+def wavelet_plot_all_events(n_group, pop_rate_monitor, threshold_in_sd):
+    '''
+    Function to plot the wavelet of the ripple events in a signal
+    '''
+    dict_wavelet_events = wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd)
+    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+    min_time = 0
+    max_time = 0
     
     pdf_file_name = f'Wavelet_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig, ax = plt.subplots(len(peak_indexes), 1, figsize=(15/cm, 10/cm), sharey=True, sharex=True)
+        fig, ax = plt.subplots(len(events.keys()), 1, figsize=(21/cm, 12/cm), sharey=True, sharex=True)
         for i, event in enumerate(events.keys()):
-            start = events[event]['Index_start']
-            end = events[event]['Index_end']
-            time_event = events[event]['Time_array']
-            wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
-            = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start*dt, end*dt], \
-                                               expected_freq = 200, fmin=100, plot=False)
-            ax[i].scatter(time_event, instfreq, c = instpower, cmap='viridis', marker='.')
-            ax[i].text(x= time_event[int(15/dt)], y = 100, s=f'Event {event}')
-            ax[i].set(ylabel='Frequency [Hz]')
+            frequencies = dict_wavelet_events[event]['Instantaneous_frequency']
+            powers = dict_wavelet_events[event]['Instantaneous_power']
+            time_array = dict_wavelet_events[event]['Time_array']
+            signal = events[event]['Signal_array']
+            time_signal = events[event]['Time_array']
+            index_peak = np.where(time_array >= 0)[0][0]
+            time_signal[index_peak]
+            index_peak_power = np.argmax(powers)
+            time_array[index_peak_power]
+#            print(index_peak, index_peak_power, (index_peak_power - index_peak)*dt )
+        
+            time_event = np.arange(-index_peak_power*dt, (len(powers)-index_peak_power)*dt, dt)
+            min_time = min(min_time, min(time_event))
+            max_time = max(max_time, max(time_event))
+#            print(min_time, max_time)
+
+            dict_wavelet_events[event]['Time_array'] = time_event
+            ax[i].grid()
+            ax[i].scatter(time_event, frequencies, c = powers, cmap='viridis', marker='.')
+            ax[i].text(x= 50, y = 150, s=f'Event {event}')
+            ax2 = ax[i].twinx()
+            ax2.plot(time_event, signal, 'k')
+#            ax[i].set(ylabel='Frequency [Hz]')
             
+        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+        fig.text(0.95, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)        
-
-
+    
+#    pdf_file_name_2 = f'Wavelet_AVERAGE_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+#    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+#        fig = plt.figure(figsize=(5/cm, 12/cm))
+        
+        
+        
+        
 
 #rate_signal, peak_per_event = find_events(n_group=G_E, pop_rate_monitor=R_E, threshold_in_sd=4, plot_peaks=True)
 #
