@@ -34,14 +34,14 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 
 #name_network = 'long_baseline_no_dendritic_8'
-#name_network = 'long_random_network_3'
-name_network = 'long_10000_network_3'
+name_network = 'long_random_network_8'
+#name_network = 'long_10000_network_3'
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 
 # In order to restore the long network it is necessary to first create an object.
@@ -86,7 +86,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
     rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
 #    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
     thr = mean(rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) + threshold_in_sd * std(rate_signal) 
-    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 50/dt)
+    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 70/dt)
     time = pop_rate_monitor.t / ms
 
     if plot_peaks:
@@ -96,7 +96,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
             plot(time, rate_signal, c='k')
             scatter(time[0] + peaks*dt, rate_signal[peaks], c='r')
             axhline(y=thr, c='gray', linestyle='--', label='Peak threshold')
-            axhline(y=mean(rate_signal[int(200/dt):]), c='gray', linestyle='dotted', label='Baseline')
+            axhline(y=mean(rate_signal[int(baseline_start/dt):]), c='gray', linestyle='dotted', label='Baseline')
             legend()
             gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
             savefig(path_to_save_figures + pdf_file_name +'.png')
@@ -120,45 +120,42 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
 #    
     time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=False)
     baseline = mean(pop_rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) # Change BASELINE to only the mean of first 400 ms.
+    thr = baseline + threshold_in_sd * std(pop_rate_signal) 
     event_props = {}
     simulation_props = {}
     simulation_props['Total_time'] = time_signal
     simulation_props['Total_signal'] = pop_rate_signal
     simulation_props['Max_peak_index'] = max_peak_indexes
     simulation_props['Baseline'] = baseline
+    simulation_props['Threshold'] = thr
 #    figure()
     for i, index in enumerate(max_peak_indexes):
-        print(i, index)
         event_props[i+1] = {}
         
-        start_event_approx = int(index - 30/dt)
-        end_event_appox = int(index + 30/dt)
+        start_event_approx = int(index - 70/dt)
+        end_event_appox = int(index + 70/dt)
         event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
         time_ranged = time_signal[start_event_approx:end_event_appox]
-        peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 3/dt)
+        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
+#        peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
         
         index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
-        find_first_peak_index = where((diff(time_ranged[peaks[:index_peak_max]]) < 6).astype(int) == 0)[0]
-        find_last_peak_index = where((diff(time_ranged[peaks[index_peak_max:]]) < 6).astype(int) == 0)[0]
         
-        if len(find_first_peak_index)==0: first_peak_index = where(peaks*dt > 3)[0][0]
-        else: first_peak_index = find_first_peak_index[-1] + 1
-        if len(find_last_peak_index)==0: last_peak_index = len(peaks) - 1
-        else: last_peak_index = find_last_peak_index[0] + index_peak_max
+        first_value_above_thr = where(event_ranged > thr)[0][0]
+        not_first = where(peaks > first_value_above_thr)[0]
+        if not_first[0] == 0: first_peak_index = peaks[0]
+        else: first_peak_index = peaks[not_first[0]-1]
+            
+        last_value_above_thr = where(event_ranged > thr)[0][-1]
+        not_last = where(peaks < last_value_above_thr)[0]
+        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
+        else: last_peak_index = peaks[not_last[-1] + 1]
         
-#        first_peak_index = where((diff(time_ranged[peaks[:index_peak_max]]) < 6).astype(int) == 0)[0][-1] + 1
-#        last_peak_index = where((diff(time_ranged[peaks[index_peak_max:]]) < 6).astype(int) == 0)[0][0] + index_peak_max 
-        indexes_below_baseline_1 = where(event_ranged[:peaks[first_peak_index]] < baseline)[0]
-        indexes_below_baseline_2 = where(event_ranged[peaks[index_peak_max]:] < baseline)[0] 
+        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
+        start_index = index_below_baseline_1[-1]
         
-        if len(indexes_below_baseline_1)==0: start_index = 0
-        else: start_index = indexes_below_baseline_1[-1] + 1
-        if len(indexes_below_baseline_2)==0: end_index = len(event_ranged) - 1
-        else: 
-            end_index = where((indexes_below_baseline_2 + peaks[index_peak_max]) > peaks[last_peak_index])[0][0]+ peaks[last_peak_index]
-#            end_index = indexes_below_baseline_2[-1] + peaks[index_peak_max] - 1
-#        start_index = where(event_ranged[:peaks[first_peak_index]] < baseline)[0][-1] + 1
-#        end_index = where(event_ranged[peaks[last_peak_index]:] < baseline)[0][0] + peaks[last_peak_index] - 1
+        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
+        end_index = last_peak_index + index_below_baseline_2[0] - 1
 
         time_event = (np.arange(0, len(time_ranged[start_index:end_index])) -  (peaks[index_peak_max]-start_index )) * dt
         event = event_ranged[start_index:end_index]
@@ -168,12 +165,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
         event_props[i+1]['Duration']= len(time_event)*dt
         event_props[i+1]['Index_start']= start_event_approx + start_index
         event_props[i+1]['Index_end']= start_event_approx + end_index
-                
-#    return event_props, simulation_props
-#        figure()
-#        plot(time_event, event, 'k')
-#        axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
-#        scatter(time_event[peaks[first_peak_index:last_peak_index+1]-start_index], event[peaks[first_peak_index:last_peak_index+1]-start_index], c='orange')                
+
         if plot_peaks_bool:
             pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}'
             with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
@@ -181,6 +173,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     
                 plot(time_ranged, event_ranged, 'k')
                 axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
+                axhline(y=thr, c='gray', linestyle='dashed', label='Threshold')
                 scatter(time_ranged[peaks], event_ranged[peaks], c='orange')        
                 scatter(time_ranged[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
                 scatter(time_ranged[start_index], event_ranged[start_index], c='b', label='Start_end')
@@ -200,13 +193,16 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
     
     '''
        
-    events_dict, simulation_dict = define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
+    events_dict, simulation_dict = define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
     
     for i, event in enumerate(events_dict.keys()):
     
         time = events_dict[event]['Time_array']
         signal_event = events_dict[event]['Signal_array']
-        peaks, props = signal.find_peaks(signal_event, height = simulation_dict['Baseline'], distance = 3/dt, prominence=1, width=[1000,3000])
+        baseline = simulation_dict['Baseline']
+        threshold = simulation_dict['Threshold']
+        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
+#        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 4/dt)
 #        index_out = where(props['prominences'] < 1)[0]
         left_bases = props['left_bases']
         right_bases = props['right_bases']
@@ -214,10 +210,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         left_bases[failed_left_calc+1] = right_bases[failed_left_calc]
         failed_right_calc = where(diff(right_bases)==0)[0]
         right_bases[failed_right_calc] = left_bases[failed_right_calc+1]
-#        if len(index_out) > 0: 
-#            peaks = delete(peaks, index_out)
-#            left_bases = delete(left_bases, index_out)
-#            rigth_bases = delete(rigth_bases, index_out)
+
         
         freq = 1 / (diff(peaks)*dt/1000)   # Divided by 1000 because of ms
         indexes_freq = (diff(peaks)/2).astype(int) + peaks[:-1]
@@ -240,15 +233,25 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         events_dict[event]['Mean_frequency'] = mean(freq)
         events_dict[event]['Spikes_per_cycle'] = spikes_percycle
         
-        
-        
-#        figure()
-#        plot(time, signal_event, label=f'{event}')
-##        plot(diff(signal_event), label=f'{event}', c='k')
-#        scatter(time[peaks], signal_event[peaks], c='r')
-#        scatter(time[start_cycles], signal_event[start_cycles], c='k')
-#        scatter(time[end_cycles], signal_event[end_cycles], c='gray')
-        
+
+        if plot_peaks_bool:
+            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}_cut'
+            with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+                fig = figure(figsize=(10/cm, 10/cm))
+    
+                plot(time, signal_event, 'k')
+                axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
+                axhline(y=threshold, c='gray', linestyle='dashed', label='Threshold')
+                scatter(time[peaks], signal_event[peaks], c='orange')        
+#                scatter(time[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
+#                scatter(time[start_index], event_ranged[start_index], c='b', label='Start_end')
+#                scatter(time_ranged[end_index], event_ranged[end_index], c='b')
+                legend()
+                gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', title=f'Network_{name_network[-1]}_Event_{i+1}_cut')
+    
+                savefig(path_to_save_figures + pdf_file_name +'.png')
+                pdf.savefig(fig)        
+                
     return events_dict, simulation_dict
 
 
@@ -536,16 +539,25 @@ def wavelet_analysis_plot(n_group, pop_rate_monitor, threshold_in_sd, ):
     '''
     events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
     total_signal = sim['Total_signal']
+    total_time = sim['Total_time']
     peak_indexes = sim['Max_peak_index']
     
-    plt.figure()
-    for event in events.keys():
-        start = events[event]['Index_start']*dt
-        end = events[event]['Index_end']*dt
-        wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
-        = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start, end], \
-                                           expected_freq = 200, fmin=100, plot=False)
-        plt.plot()
+    pdf_file_name = f'Wavelet_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(len(peak_indexes), 1, figsize=(15/cm, 10/cm), sharey=True, sharex=True)
+        for i, event in enumerate(events.keys()):
+            start = events[event]['Index_start']
+            end = events[event]['Index_end']
+            time_event = events[event]['Time_array']
+            wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
+            = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start*dt, end*dt], \
+                                               expected_freq = 200, fmin=100, plot=False)
+            ax[i].scatter(time_event, instfreq, c = instpower, cmap='viridis', marker='.')
+            ax[i].text(x= time_event[int(15/dt)], y = 100, s=f'Event {event}')
+            ax[i].set(ylabel='Frequency [Hz]')
+            
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)        
 
 
 
