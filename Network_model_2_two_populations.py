@@ -23,7 +23,8 @@ import matplotlib.pyplot as plt
 from brian2 import *
 from brian2 import ms, mV
 
-def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1):
+def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
+                    neurons_exc = arange(1), neurons_inh=arange(1)):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
@@ -198,11 +199,16 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     '''
 
     # Excitatory population
-    G_ex = NeuronGroup(N_ex, eqs_neuron_exc, threshold = 'v>v_threshold', reset = 'v=Vr',  
-                    refractory = 'refrac', method = 'euler', name='Neurongroup_ex',
-                    events={'dendritic_event': 'n>n_th and r<=0'})
-#    G_ex.run_on_event('dendritic_event', 'r=1; y += clip(1.46 - 0.053*(g_A_ext + g_A_rec)/nS, 0, Inf) * (tauDS2 - tauDS1)/tauDS2 * B; z += clip(1.46 - 0.053*(g_A_ext + g_A_rec)/nS, 0, Inf) * (tauDS1 - tauDS3)/tauDS3 * C' )
-    G_ex.run_on_event('dendritic_event', 'r=1; y += clip(1.46 - 0.053*4*gmax_exex/nS, 0, Inf) * (tauDS2 - tauDS1)/tauDS2 * B; z += clip(1.46 - 0.053*4*gmax_exex/nS, 0, Inf) * (tauDS1 - tauDS3)/tauDS3 * C' )
+    if dendritic_interactions:
+        G_ex = NeuronGroup(N_ex, eqs_neuron_exc, threshold = 'v>v_threshold', reset = 'v=Vr',  
+                           refractory = 'refrac', method = 'euler', name='Neurongroup_ex',
+                           events={'dendritic_event': 'n>n_th and r<=0'})
+        G_ex.run_on_event('dendritic_event', 'r=1; y += clip(1.46 - 0.053*4*gmax_exex/nS, 0, Inf) * (tauDS2 - tauDS1)/tauDS2 * B; z += clip(1.46 - 0.053*4*gmax_exex/nS, 0, Inf) * (tauDS1 - tauDS3)/tauDS3 * C' )
+
+    else:
+        G_ex = NeuronGroup(N_ex, eqs_neuron_exc, threshold = 'v>v_threshold', reset = 'v=Vr',
+                           refractory = 'refrac', method = 'euler', name='Neurongroup_ex')
+        #    G_ex.run_on_event('dendritic_event', 'r=1; y += clip(1.46 - 0.053*(g_A_ext + g_A_rec)/nS, 0, Inf) * (tauDS2 - tauDS1)/tauDS2 * B; z += clip(1.46 - 0.053*(g_A_ext + g_A_rec)/nS, 0, Inf) * (tauDS1 - tauDS3)/tauDS3 * C' )
     G_ex.Cm = Cm_ex
     G_ex.gL = gL_ex
     G_ex.refrac = tref_ex
@@ -281,14 +287,20 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     
 
 # ---------------------------Recurrent connections---------------------------
-    S_ee = Synapses(G_ex, G_ex, on_pre ={'up': 'n=clip(n+1, 0, inf)', 
-                                         'down': 'n = clip(n-1, 0, inf)',
-                                         'pre': eqs_pre_exc_A_rec},
-                                delay ={'up':   tau_exex + tau_ax + tauDS, 
-                                        'down': tau_exex + tau_ax + tauDS + delta_t,
-                                        'pre':  tau_exex + tau_ax},
-                                method ='euler',
-                                name = 'Synapses_ee')
+    if dendritic_interactions:
+        S_ee = Synapses(G_ex, G_ex, on_pre ={'up': 'n=clip(n+1, 0, inf)', 
+                                             'down': 'n = clip(n-1, 0, inf)',
+                                             'pre': eqs_pre_exc_A_rec},
+                                    delay ={'up':   tau_exex + tau_ax + tauDS, 
+                                            'down': tau_exex + tau_ax + tauDS + delta_t,
+                                            'pre':  tau_exex + tau_ax},
+                                    method ='euler',
+                                    name = 'Synapses_ee')
+    else:
+        S_ee = Synapses(G_ex, G_ex, on_pre = eqs_pre_exc_A_rec,
+                                    delay = tau_exex + tau_ax,
+                                    method ='euler',
+                                    name = 'Synapses_ee')    
     S_ee.connect(p=p_exex) # Excitatory to excitatory neurons
     
     S_ie = Synapses(G_ex, G_in, on_pre = eqs_pre_inh_A_rec,
@@ -341,24 +353,26 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
 
     net.run(pre_run_dur)
 
-    neurons_exc = arange(500)
-    neurons_inh = arange(50)
+#    neurons_exc = arange(500)
+#    neurons_inh = arange(50)
 
     M_E = SpikeMonitor(G_ex, record=True, name='Spikemonitor')
     M_I = SpikeMonitor(G_in, record=True, name='Spikemonitor2')
-    M_DS = EventMonitor(G_ex, event='dendritic_event', record=True, name='Dendriticspikemon')
+    if dendritic_interactions: M_DS = EventMonitor(G_ex, event='dendritic_event', record=True, name='Dendriticspikemon')
     R_E = PopulationRateMonitor(G_ex, name='Ratemonitor')
     R_I = PopulationRateMonitor(G_in, name='Ratemonior2')
     #DS = EventMonitor(G_ex, record=True, 'dendritic_event', name='DSpikemonitor')
     
-#    SM_G_ex = StateMonitor(G_ex, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec', 'I_DS', 'n', 'y', 'z', 'r'), record=neurons_exc, name='Statemonitor')
-#    SM_G_in = StateMonitor(G_in, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec'), record=neurons_inh, name='Statemonitor2')
+    if type(neurons_exc)==bool and (neurons_exc == True or neurons_inh == True):
+        SM_G_ex = StateMonitor(G_ex, ('v', 'I_A', 'I_G'), record=neurons_exc, name='Statemonitor')
+        SM_G_in = StateMonitor(G_in, ('v', 'I_A', 'I_G'), record=neurons_inh, name='Statemonitor2')
+    else:
+        SM_G_ex = StateMonitor(G_ex, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec', 'I_DS', 'n', 'y', 'z', 'r'), record=neurons_exc, name='Statemonitor')
+        SM_G_in = StateMonitor(G_in, ('v', 'g_A_ext', 'g_A_rec', 'g_G_ext', 'g_G_rec'), record=neurons_inh, name='Statemonitor2')
 
-    SM_G_ex = StateMonitor(G_ex, ('v', 'I_A', 'I_G'), record=True, name='Statemonitor')
-    SM_G_in = StateMonitor(G_in, ('v', 'I_A', 'I_G'), record=True, name='Statemonitor2')
     
-    monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in, M_DS]
-
+    if dendritic_interactions: monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in, M_DS]
+    else: monitors = [ M_E, M_I, R_E, R_I, SM_G_ex, SM_G_in]
     # Store the current state of the network
     net.add(monitors)
     net.run(sim_dur)
@@ -370,7 +384,7 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
 # ------------------PLOT------------------------------------------------------
 '''
 spik_mon = net.sorted_objects[8]
-
+^
 neuron_index = 0
 
 fig, ax = plt.subplots(8,1, figsize=(6,10), sharex=True)

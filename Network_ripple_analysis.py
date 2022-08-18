@@ -13,7 +13,6 @@ Here we should expect definition of calculation functions and plots.
 '''
 
 # --------------------------------Imports------------------------------
-
 import os
 import numpy as np
 from random import choices
@@ -32,26 +31,31 @@ from matplotlib.ticker import MaxNLocator
 
 
 from Network_model_2_two_populations import Network_model_2
-
+from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
-name_network = 'long_allneurons_event_network_3'
+
+#name_network = 'long_baseline_no_dendritic_8'
+#name_network = 'long_random_network_3'
+name_network = 'long_10000_network_3'
+#name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=10*ms, total_neurons=1000, scale_factor=1)
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1, 
+                                    dendritic_interactions=True, neurons_exc = arange(2), neurons_inh=arange(1))
 #network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
 
 # Get monitors from the network
-M_E = network.sorted_objects[-19]
-M_I = network.sorted_objects[-18]
+M_E = network.sorted_objects[24]
+M_I = network.sorted_objects[25]
 M_DS = network.sorted_objects[-16]
 R_E = network.sorted_objects[-1]
 R_I = network.sorted_objects[-2]  
@@ -64,13 +68,14 @@ dt = 0.001
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, plot_peaks=False):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=200, baseline_end=300, plot_peaks=False):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
     pop_rate_monitor: Population rate monitor from either excitatory or inhibitory population (neuron group)
     threshold_in_sd: number of standard deviations to multiply for the baseline, in order to establish the threshold
         threshold = baseline * threshold_in_sd * sd
+    baseline_start and end: in miliseconds of the signal.
     returns
         time: time array for the rate monitor [unitless]
         rate_signal: the signal from the rate monitor [unitless]
@@ -80,7 +85,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
     '''
     rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
 #    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
-    thr = mean(rate_signal[int(200/dt):]) + threshold_in_sd * std(rate_signal) 
+    thr = mean(rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) + threshold_in_sd * std(rate_signal) 
     peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 50/dt)
     time = pop_rate_monitor.t / ms
 
@@ -99,7 +104,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
 
     return time, rate_signal, peaks
 
-def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False):
+def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
     '''
     Function to define the start, end and therefore duration of a ripple event
     n_group: Neuron group
@@ -113,8 +118,8 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fal
 #    pop_rate_monitor=R_E
 #    threshold_in_sd=3
 #    
-    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=True)
-    baseline = mean(pop_rate_signal[:int(400/dt)]) # Change BASELINE to only the mean of first 400 ms.
+    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=False)
+    baseline = mean(pop_rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) # Change BASELINE to only the mean of first 400 ms.
     event_props = {}
     simulation_props = {}
     simulation_props['Total_time'] = time_signal
@@ -123,10 +128,11 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fal
     simulation_props['Baseline'] = baseline
 #    figure()
     for i, index in enumerate(max_peak_indexes):
+        print(i, index)
         event_props[i+1] = {}
         
-        start_event_approx = int(index - 50/dt)
-        end_event_appox = int(index + 50/dt)
+        start_event_approx = int(index - 30/dt)
+        end_event_appox = int(index + 30/dt)
         event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
         time_ranged = time_signal[start_event_approx:end_event_appox]
         peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 3/dt)
@@ -135,15 +141,24 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fal
         find_first_peak_index = where((diff(time_ranged[peaks[:index_peak_max]]) < 6).astype(int) == 0)[0]
         find_last_peak_index = where((diff(time_ranged[peaks[index_peak_max:]]) < 6).astype(int) == 0)[0]
         
-        if len(find_first_peak_index)==0: first_peak_index = 0
+        if len(find_first_peak_index)==0: first_peak_index = where(peaks*dt > 3)[0][0]
         else: first_peak_index = find_first_peak_index[-1] + 1
-        if len(find_last_peak_index)==0: last_peak_index = index_peak_max
+        if len(find_last_peak_index)==0: last_peak_index = len(peaks) - 1
         else: last_peak_index = find_last_peak_index[0] + index_peak_max
         
 #        first_peak_index = where((diff(time_ranged[peaks[:index_peak_max]]) < 6).astype(int) == 0)[0][-1] + 1
 #        last_peak_index = where((diff(time_ranged[peaks[index_peak_max:]]) < 6).astype(int) == 0)[0][0] + index_peak_max 
-        start_index = where(event_ranged[:peaks[first_peak_index]] < baseline)[0][-1] + 1
-        end_index = where(event_ranged[peaks[last_peak_index]:] < baseline)[0][0] + peaks[last_peak_index] - 1
+        indexes_below_baseline_1 = where(event_ranged[:peaks[first_peak_index]] < baseline)[0]
+        indexes_below_baseline_2 = where(event_ranged[peaks[index_peak_max]:] < baseline)[0] 
+        
+        if len(indexes_below_baseline_1)==0: start_index = 0
+        else: start_index = indexes_below_baseline_1[-1] + 1
+        if len(indexes_below_baseline_2)==0: end_index = len(event_ranged) - 1
+        else: 
+            end_index = where((indexes_below_baseline_2 + peaks[index_peak_max]) > peaks[last_peak_index])[0][0]+ peaks[last_peak_index]
+#            end_index = indexes_below_baseline_2[-1] + peaks[index_peak_max] - 1
+#        start_index = where(event_ranged[:peaks[first_peak_index]] < baseline)[0][-1] + 1
+#        end_index = where(event_ranged[peaks[last_peak_index]:] < baseline)[0][0] + peaks[last_peak_index] - 1
 
         time_event = (np.arange(0, len(time_ranged[start_index:end_index])) -  (peaks[index_peak_max]-start_index )) * dt
         event = event_ranged[start_index:end_index]
@@ -219,6 +234,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
             
         
         events_dict[event]['Num_peaks'] = len(peaks)
+        events_dict[event]['Peaks_indexes'] = peaks
         events_dict[event]['Instant_frequency'] = freq
         events_dict[event]['Indices_frequency'] = indexes_freq
         events_dict[event]['Mean_frequency'] = mean(freq)
@@ -478,45 +494,58 @@ def plot_scatter_spikes(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event
         pdf.savefig(fig)        
         
 
-def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_monitor):
+def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_monitor, threshold_in_sd = 3):
     '''
     Function to observe how the currents in the neurons are within one event. Speciallz before and after
     '''
     if name_network != 'long_allneurons_event_network_3': return
-    else:        
+    else:    
+        events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+        peaks_indexes = (events[1]['Peaks_indexes'] + events[1]['Index_start']) * dt 
         pdf_file_name = f'spikes_currents_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
         with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-            fig = figure(figsize=(18/cm,12/cm))
-            gs0 = gridspec.GridSpec(6, 1, figure=fig, wspace=0.5/cm, hspace=0.5/cm )
+            fig, ax = subplots(3, 1, figsize=(18/cm,12/cm), sharex=True)
             
             time = pop_rate_monitor.t/ms
             rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
             exc_current = mean(pop_state_monitor.I_A/nA, axis=0)
             inh_current = mean(pop_state_monitor.I_G/nA, axis=0)
             
-            ax_sp = fig.add_subplot(gs0[:2])
-            ax_sp.scatter(pop_spikes_monitor.t/ms, pop_spikes_monitor.i, marker='.', color='k')
-            ax_sp.set(ylabel='Neuron index', xlim=(min(time), max(time)))
-            ax_rate = fig.add_subplot(gs0[2:4], sharex=ax_sp)
-            ax_rate.plot(time, rate_signal, color='k')
-            ax_rate.set(ylabel='Rate [kHz]')
-#            ax_exc = fig.add_subplot(gs0[4])
-#            ax_exc.plot(time, exc_current, color='green', label='Excitatory')
-#            ax_exc.set(ylabel='Exc. current [nA]')
-#            ax_inh = fig.add_subplot(gs0[5])
-#            ax_inh.plot(time, abs(inh_current), color='indigo', label='Inhibitory')
-#            ax_inh.set(ylabel='Inh. current [nA]')#
-            ax_curr = fig.add_subplot(gs0[4:], sharex=ax_sp)
-            ax_curr.plot(time, exc_current, color='green', label='Excitatory')
-            ax_curr.plot(time, abs(inh_current), color='indigo', label='abs(Inhibitory)')     
-            ax_curr.set(ylabel='Current [nA]', xlabel='Time [ms]')
-            ax_curr.legend()
+            ax[0].scatter(pop_spikes_monitor.t/ms, pop_spikes_monitor.i, marker='.', color='k')
+            ax[0].set(ylabel='Neuron index', xlim=(min(time), max(time)))
+            ax[0].vlines(x=peaks_indexes+time[0], ymin = ax[0].get_ylim()[0], ymax = ax[0].get_ylim()[1], colors='silver', zorder=0, linewidth=0.5)
+            
+            ax[1].plot(time, rate_signal, color='k')
+            ax[1].set(ylabel='Rate [kHz]')
+            ax[1].vlines(peaks_indexes+time[0], ymin = ax[1].get_ylim()[0], ymax = ax[1].get_ylim()[1], colors='silver', zorder=0, linewidth=0.5)
+            
+            ax[2].plot(time, exc_current, color='green', label='Excitatory')
+            ax[2].plot(time, abs(inh_current), color='indigo', label='abs(Inhibitory)')    
+            ax[2].plot(time, exc_current - abs(inh_current), color='skyblue', label='Difference')  
+            ax[2].vlines(peaks_indexes+time[0], ymin = ax[2].get_ylim()[0], ymax = ax[2].get_ylim()[1], colors='silver', zorder=0, linewidth=0.5)
+            ax[2].set(ylabel='Current [nA]', xlabel='Time [ms]')
+            ax[2].legend()
             
             plt.savefig(path_to_save_figures + pdf_file_name +'.png')
             pdf.savefig(fig)
 
     
-
+def wavelet_analysis_plot(n_group, pop_rate_monitor, threshold_in_sd, ):
+    '''
+    Function to evaluate the ripple event based on the frequency domain and power spectrum
+    '''
+    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+    total_signal = sim['Total_signal']
+    peak_indexes = sim['Max_peak_index']
+    
+    plt.figure()
+    for event in events.keys():
+        start = events[event]['Index_start']*dt
+        end = events[event]['Index_end']*dt
+        wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
+        = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start, end], \
+                                           expected_freq = 200, fmin=100, plot=False)
+        plt.plot()
 
 
 
@@ -526,4 +555,5 @@ def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_
 #
 #plot(R_E.t / ms, R_E.smooth_rate(width=1*ms)*len(G_E) / kHz, color='k')
 #
+
 
