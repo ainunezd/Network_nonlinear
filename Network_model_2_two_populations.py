@@ -29,6 +29,7 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
     
+    seed_num: Num for random seed
     sim_dur: Time duration of the simulation
     pre_run_dur: Time tu run the network before actuallz stating to record from it.
     total_neurons: Total number of neurons that would be then splited into two populations
