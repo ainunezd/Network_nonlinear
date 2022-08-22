@@ -24,7 +24,7 @@ from brian2 import *
 from brian2 import ms, mV
 
 def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
-                    neurons_exc = arange(1), neurons_inh=arange(1)):
+                    neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
@@ -71,7 +71,7 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     tauDS1 = 0.2 *ms
     tauDS2 = 0.3 *ms
     tauDS3 = 0.7 *ms
-    tauDS = 2.7 * ms
+#    tauDS = 2.7 * ms
 #    g_theta = 8.65 * nS
     tref_D = tauDS + 2.5 * ms
 
@@ -79,7 +79,7 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
 
     # Parameters for exc-exc (from excitatory to excitatory)
     p_exex = 0.08
-    tau_exex = 1 *ms
+#    tau_exex = 1 *ms
     gmax_exex = 2.3 *nS
     tauA1_ee = 2.5 *ms
     tauA2_ee = 0.5 *ms
@@ -279,7 +279,7 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
                                                    method ='euler',
                                                    name = 'Synapses_input_inex')
     Sinput_inex.connect(j='i')
-    
+    tau_ax
     Sinput_inin = Synapses(inh_input_to_inh, G_in, on_pre = eqs_pre_inh_G_ext,
                                                    delay = tau_inin + tau_ax,
                                                    method ='euler',
