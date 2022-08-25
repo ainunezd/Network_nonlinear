@@ -439,7 +439,7 @@ def plot_stored_networks_full_simulation():
     
         # In order to restore the long network it is necessary to first create an object.
         # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-        dur_simulation=10nes(peaks_indexes+time[0], 
+        dur_simulation=10 
         network, monitors = Network_model_2(seed_num=111, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, scale_factor=1)
         #network.store(name='rand_net', filename = path_networks + name_network)
         
