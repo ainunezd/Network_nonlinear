@@ -34,25 +34,25 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 
 #name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-#name_network = 'long_12000_network_8'
-name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
+name_network = 'long_10000_network_3'
+#name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 
 # In order to restore the long network it is necessary to first create an object.
 # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=1600*ms, total_neurons=1000, 
-                                    scale_factor=1, dendritic_interactions=True, neurons_exc = True,neurons_inh = True)
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                    scale_factor=1, dendritic_interactions=True, neurons_exc = np.arange(2), neurons_inh = np.arange(1))
 #network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -72,7 +72,7 @@ dt = 0.001
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=200, baseline_end=300, plot_peaks=False):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=False):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -145,30 +145,41 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
         
         index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
         
-        first_value_above_thr = where(event_ranged > thr)[0][0]
-        not_first = where(peaks > first_value_above_thr)[0]
-        if not_first[0] == 0: first_peak_index = peaks[0]
-        else: first_peak_index = peaks[not_first[0]-1]
-            
-        last_value_above_thr = where(event_ranged > thr)[0][-1]
-        not_last = where(peaks < last_value_above_thr)[0]
-        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
-        else: last_peak_index = peaks[not_last[-1] + 1]
+        peaks_below_thr_indexes = where(event_ranged[peaks] < thr)[0]
+        #taking into account the first peak of the event to be one before the first peak above threshold.
+        first_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes < index_peak_max)[0]][-1]
+        start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
+        last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
+        end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
         
-        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
-        start_index = index_below_baseline_1[-1]
         
-        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
-        end_index = last_peak_index + index_below_baseline_2[0] - 1
+#        first_value_above_thr = where(event_ranged > thr)[0][0]
+#        
+#        
+#        first_value_below_thr = where(event_ranged < thr)
+#        not_first = where(peaks > first_value_above_thr)[0]
+#        if not_first[0] == 0: first_peak_index = peaks[0]
+#        else: first_peak_index = peaks[not_first[0]-1]
+#            
+#        last_value_above_thr = where(event_ranged > thr)[0][-1]
+#        not_last = where(peaks < last_value_above_thr)[0]
+#        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
+#        else: last_peak_index = peaks[not_last[-1] + 1]
+#        
+#        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
+#        start_index = index_below_baseline_1[-1]
+#        
+#        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
+#        end_index = last_peak_index + index_below_baseline_2[0] - 1
 
-        time_event = (np.arange(0, len(time_ranged[start_index:end_index])) -  (peaks[index_peak_max]-start_index )) * dt
-        event = event_ranged[start_index:end_index]
+        time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
+        event = event_ranged[start_index_event:end_index_event]
 #        peaks = peaks[first_peak_index:last_peak_index+1] - start_index
         event_props[i+1]['Time_array'] = time_event
         event_props[i+1]['Signal_array'] = event
         event_props[i+1]['Duration']= len(time_event)*dt
-        event_props[i+1]['Index_start']= start_event_approx + start_index
-        event_props[i+1]['Index_end']= start_event_approx + end_index
+        event_props[i+1]['Index_start']= start_event_approx + start_index_event
+        event_props[i+1]['Index_end']= start_event_approx + end_index_event
 
         if plot_peaks_bool:
             pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}'
@@ -178,10 +189,10 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
                 plot(time_ranged, event_ranged, 'k')
                 axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
                 axhline(y=thr, c='gray', linestyle='dashed', label='Threshold')
-                scatter(time_ranged[peaks], event_ranged[peaks], c='orange')        
+                scatter(time_ranged[peaks[first_peak_event_index:last_peak_event_index+1]], event_ranged[peaks[first_peak_event_index:last_peak_event_index+1]], c='orange')        
                 scatter(time_ranged[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
-                scatter(time_ranged[start_index], event_ranged[start_index], c='b', label='Start_end')
-                scatter(time_ranged[end_index], event_ranged[end_index], c='b')
+                scatter(time_ranged[start_index_event], event_ranged[start_index_event], c='b', label='Start_end')
+                scatter(time_ranged[end_index_event], event_ranged[end_index_event], c='b')
                 legend()
                 gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', title=f'Network_{name_network[-1]}_Event_{i+1}')
     
@@ -536,168 +547,286 @@ def currents_one_event(n_group, pop_rate_monitor, pop_spikes_monitor, pop_state_
             plt.savefig(path_to_save_figures + pdf_file_name +'.png')
             pdf.savefig(fig)
 
-    
-def wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd, ):
+
+
+def get_wavelet_information(n_group, pop_rate_monitor, threshold_in_sd):
     '''
     Function to evaluate the ripple event based on the frequency domain and power spectrum
     '''
     events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
-    total_signal = sim['Total_signal']
+#    total_signal = sim['Total_signal']
+    total_signal = pop_rate_monitor.smooth_rate(width=0.1*ms)*len(n_group) / kHz # Smothing the signal by 0.1 ms
     total_time = sim['Total_time']
     peak_indexes = sim['Max_peak_index']
     dict_wavelet = {}
-
+    
     for i, event in enumerate(events.keys()):
         dict_wavelet[event] = {}
         start = events[event]['Index_start']
         end = events[event]['Index_end']
-        time_event = events[event]['Time_array']
+#        time_event = events[event]['Time_array']
 
         wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
         = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start*dt, end*dt], \
                                            expected_freq = 200, fmin=100, plot=False)
         
-        time_powers = np.arange(- np.argmax(instpower)*dt, (instpower.shape - np.argmax(instpower))*dt, dt)
-        dict_wavelet[event]['Time_array'] = time_event
-        dict_wavelet[event]['Time_array_max_power'] = np.around(time_powers, 3)
+        dict_wavelet[event]['Max_peak_time'] = total_time[peak_indexes[i]]
+        dict_wavelet[event]['Time_event_from_alltime'] = total_time[start:end]
         dict_wavelet[event]['Instantaneous_frequency'] = instfreq
         dict_wavelet[event]['Instantaneous_power'] = instpower
+        dict_wavelet[event]['Discrete_frequency'] = ifreq_discr
+        dict_wavelet[event]['Discrete_frequency_time'] = ifreq_discr_t
         dict_wavelet[event]['wspec'] = wspec
-#            
-        dict_wavelet[event]['Time_inst_freq_discrete'] = ifreq_discr_t
-        dict_wavelet[event]['inst_freq_discrete'] = ifreq_discr
+        regression = stats.linregress(ifreq_discr_t, ifreq_discr)
+        dict_wavelet[event]['slope_intercept'] = [regression.slope, regression.intercept]  # Hz/ms slope
+        
    
     return dict_wavelet
 
-def adjust_dict_wavelet(n_group, pop_rate_monitor, threshold_in_sd):
+    
+def discrete_freq_analysis(dict_wavelet_information):
     '''
-    Function to create all wavelet frequency arrays of the same size in order to average with respect to the max power
-    In order to do so, arrays of nan's will be concatenated
-    
-    return 
-        dict_wavelet_events modified
-        dict with mean_values and max power
-    '''    
-    
-    dict_wavelet_events = wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd)
-    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
-    dict_sts = {}
-    min_time, max_time, max_power = 0, 0, 0
-    
-    # Get maximum values for normalization and standarization
-    for event in dict_wavelet_events.keys():
-        time_powers = dict_wavelet_events[event]['Time_array_max_power']
-        powers = dict_wavelet_events[event]['Instantaneous_power']
-        frequencies = dict_wavelet_events[event]['Instantaneous_frequency']
-        min_time, max_time = min(min_time, time_powers[0]), max(max_time, time_powers[-1])
-        max_power = max(max_power, max(powers))
-        index_to_delete = np.where(frequencies[:len(frequencies)//2]==100)[0]
-        adjusted_frequencies = np.zeros(len(frequencies))
-        if len(index_to_delete) > 0: 
-            adjusted_frequencies[index_to_delete] = np.nan * np.ones(len(index_to_delete))
-            adjusted_frequencies[len(index_to_delete):] = frequencies[len(index_to_delete):]
-        else:
-            adjusted_frequencies = frequencies
-        dict_wavelet_events[event]['Instantaneous_frequency'] = adjusted_frequencies
-        dict_wavelet_events[event]['Time_delay_with_peak'] = time_powers[np.argmax(events[event]['Signal_array'])]
-        
-    
-    time_all = np.around(np.arange(min_time, max_time+dt, dt), decimals=3)
-    freq_matrix, powers_matrix = np.zeros((len(dict_wavelet_events.keys()), len(time_all))), np.zeros((len(dict_wavelet_events.keys()), len(time_all)))
-    
-    for event in dict_wavelet_events.keys():
-        frequencies = dict_wavelet_events[event]['Instantaneous_frequency']
-        powers = dict_wavelet_events[event]['Instantaneous_power']
-        wspec = dict_wavelet_events[event]['wspec']
-        
-        indexes_1 = where(time_all < dict_wavelet_events[event]['Time_array_max_power'][0])[0]
-        indexes_2 = where(dict_wavelet_events[event]['Time_array_max_power'][-1] <  time_all)[0]
-        
-        if len(indexes_1) > 0:
-            frequencies = np.append(np.nan * np.ones (len(indexes_1)), frequencies) 
-            powers = np.append(np.nan * np.ones (len(indexes_1)), powers)
-            wspec = np.append(np.nan * np.ones((350,len(indexes_1))), wspec, axis=1)
-        if len(indexes_2) > 0:
-            frequencies = np.append(frequencies, np.nan * np.ones (len(indexes_2))) 
-            powers = np.append(powers, np.nan * np.ones (len(indexes_2))) 
-            wspec = np.append(wspec, np.nan * np.ones((350,len(indexes_2))), axis=1)    
-            
-        freq_matrix[event-1, :] = frequencies
-        powers_matrix[event-1, :] = powers
-
-        dict_wavelet_events[event]['Time_array_max_power'] = time_all
-        dict_wavelet_events[event]['Instantaneous_frequency'] = frequencies
-        dict_wavelet_events[event]['Instantaneous_power'] = powers
-        dict_wavelet_events[event]['wspec'] = wspec
-        
-
-    dict_sts['Min_time'] = min_time
-    dict_sts['Max_time'] = max_time
-    dict_sts['Max_power'] = max_power
-    dict_sts['Time_all_max_power'] = time_all
-    dict_sts['Mean_frequencies_nan'] = np.nanmean(freq_matrix, axis=0)
-    dict_sts['Mean_frequencies'] = np.mean(freq_matrix, axis=0)
-    dict_sts['Mean_powers_nan'] = np.nanmean(powers_matrix, axis=0)
-    dict_sts['Mean_powers'] = np.mean(powers_matrix, axis=0)
-
-    
-    return dict_wavelet_events, dict_sts    
-        
-
-def wavelet_plot_all_events(n_group, pop_rate_monitor, threshold_in_sd):
+    Function to plot and analyse the instantaneous frequency
     '''
-    Function to plot the wavelet of the ripple events in a signal
-    '''
-    dict_wavelet_events_adjust, dict_sts = adjust_dict_wavelet(n_group, pop_rate_monitor, threshold_in_sd)
-    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+    num_events = len(dict_wavelet_information.keys())
+    colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
     
-    colormap = plt.cm.viridis 
-    normalize = matplotlib.colors.Normalize(vmin=0, vmax=int(dict_sts['Max_power']) + 1.)
-    
-    pdf_file_name = f'Wavelet_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    pdf_file_name = f'Discrete_frequencies_all_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig, ax = plt.subplots(len(events.keys()), 1, figsize=(21/cm, 12/cm), sharey=True, sharex=True)
-        for i, event in enumerate(events.keys()):
-            frequencies = dict_wavelet_events_adjust[event]['Instantaneous_frequency']
-            powers = dict_wavelet_events_adjust[event]['Instantaneous_power']
-            time_array_max_power = dict_wavelet_events_adjust[event]['Time_array_max_power']
-            signal_array = events[event]['Signal_array']
-            time_signal = events[event]['Time_array']
-            peak_delay = dict_wavelet_events_adjust[event]['Time_delay_with_peak']
-
+        fig, ax = plt.subplots(num_events, 1, figsize=(21/cm, 21/cm), sharex=True, sharey=True)
+        for i, event in enumerate(dict_wavelet_information.keys()):
+            max_peak_time = dict_wavelet_information[event]['Max_peak_time']
+            frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
+            time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time
+            slope = dict_wavelet_information[event]['slope_intercept'][0]
+            intercept = dict_wavelet_information[event]['slope_intercept'][1]
+            time_values = np.arange(dict_wavelet_information[event]['Discrete_frequency_time'][0], dict_wavelet_information[event]['Discrete_frequency_time'][-1]+dt, dt)
+            regression_values = time_values * slope + intercept
+            
             ax[i].grid(zorder= 0)
-            p = ax[i].scatter(time_array_max_power, frequencies, c = powers, cmap=colormap, norm=normalize, marker='.', zorder=1)
-            ax[i].text(x= 40, y = 170, s=f'Event {event}', zorder=3)
-            ax2 = ax[i].twinx()
-            ax2.plot(time_signal+peak_delay, signal_array, 'k', zorder=2)
-#            ax[i].set(ylabel='Frequency [Hz]')
+            ax[i].scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.', label=f'Event {event}')
+            ax[i].plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
+            ax[i].legend()
+        ax[i].set(xlabel='Time w.r.t. highest peak')
         fig.subplots_adjust(right=0.8)
-        cbar_ax = fig.add_axes([0.9, 0.15, 0.02, 0.7])
-        fig.colorbar(p, cax=cbar_ax, label='Power')
-
         fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
-        fig.text(0.85, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)        
-    
-    pdf_file_name_2 = f'Wavelet_AVERAGE_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
-    with PdfPages(path_to_save_figures + pdf_file_name_2 + '.pdf') as pdf:
-        fig, ax = plt.subplots(2, 1, figsize=(21/cm, 5/cm), sharey=True, sharex=True)
-        ax[0].grid(zorder= 0)
-        ax[0].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies_nan'], c = dict_sts['Mean_powers_nan'], 
-          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'All data')
-        ax[1].grid(zorder= 0)
-        ax[1].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies'], c = dict_sts['Mean_powers'], 
-          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'Cut data')
-        fig.subplots_adjust(right=0.8)
-        cbar_ax = fig.add_axes([0.9, 0.15, 0.02, 0.7])
-        fig.colorbar(p, cax=cbar_ax, label='Power')
 
-        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
-        fig.text(0.85, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
-        plt.savefig(path_to_save_figures + pdf_file_name_2 +'.png')
-        pdf.savefig(fig)              
+def plot_all_discrete_frequencies(dict_wavelet_information):
+    '''
+    Function to plot and analyse the instantaneous frequency
+    '''
+    num_events = len(dict_wavelet_information.keys())
+    colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
+    times = np.array([])
+    frequencies = np.array([])
+    pdf_file_name = f'Discrete_frequencies_SUMMARY_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 8/cm))
+        for i, event in enumerate(dict_wavelet_information.keys()):
+            max_peak_time = dict_wavelet_information[event]['Max_peak_time']
+            frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
+            time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time      
+            times = np.append(times, time_discrete)
+            frequencies = np.append(frequencies, frequencies_discrete)
+            
+            ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
         
+        ax.grid(zorder= 0)
+        ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
+        fig.subplots_adjust(right=0.8)
+        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)     
+
+
+
+#    
+#    pdf_file_name_2 = f'Wavelet_AVERAGE_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+#    with PdfPages(path_to_save_figures + pdf_file_name_2 + '.pdf') as pdf:
+#        fig, ax = plt.subplots(2, 1, figsize=(21/cm, 5/cm), sharey=True, sharex=True)
+#        ax[0].grid(zorder= 0)
+#        ax[0].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies_nan'], c = dict_sts['Mean_powers_nan'], 
+#          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'All data')
+#        ax[1].grid(zorder= 0)
+#        ax[1].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies'], c = dict_sts['Mean_powers'], 
+#          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'Cut data')
+#        fig.subplots_adjust(right=0.8)
+#        cbar_ax = fig.add_axes([0.9, 0.15, 0.02, 0.7])
+#        fig.colorbar(p, cax=cbar_ax, label='Power')
+#
+#        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+#        fig.text(0.85, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
+#        plt.savefig(path_to_save_figures + pdf_file_name_2 +'.png')
+#        pdf.savefig(fig)              
+#        
+
+    
+    
+    
+
+#def wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd, ):
+#    '''
+#    Function to evaluate the ripple event based on the frequency domain and power spectrum
+#    '''
+#    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+#    total_signal = sim['Total_signal']
+#    total_time = sim['Total_time']
+#    peak_indexes = sim['Max_peak_index']
+#    dict_wavelet = {}
+#
+#    for i, event in enumerate(events.keys()):
+#        dict_wavelet[event] = {}
+#        start = events[event]['Index_start']
+#        end = events[event]['Index_end']
+#        time_event = events[event]['Time_array']
+#
+#        wspec, wspec_extent, instfreq, instpower, freq_onset_inst, instcoherence, Pthr, ifreq_discr_t, ifreq_discr\
+#        = f_oscillation_analysis_transient(total_signal, dt=dt, baseline_window=[0, 400], target_window = [start*dt, end*dt], \
+#                                           expected_freq = 200, fmin=100, plot=False)
+#        
+#        time_powers = np.arange(- np.argmax(instpower)*dt, (instpower.shape - np.argmax(instpower))*dt, dt)
+#        dict_wavelet[event]['Time_array'] = time_event
+#        dict_wavelet[event]['Time_array_max_power'] = np.around(time_powers, 3)
+#        dict_wavelet[event]['Instantaneous_frequency'] = instfreq
+#        dict_wavelet[event]['Instantaneous_power'] = instpower
+#        dict_wavelet[event]['wspec'] = wspec
+##            
+#        dict_wavelet[event]['Time_inst_freq_discrete'] = ifreq_discr_t
+#        dict_wavelet[event]['inst_freq_discrete'] = ifreq_discr
+#   
+#    return dict_wavelet
+#
+#def adjust_dict_wavelet(n_group, pop_rate_monitor, threshold_in_sd):
+#    '''
+#    Function to create all wavelet frequency arrays of the same size in order to average with respect to the max power
+#    In order to do so, arrays of nan's will be concatenated
+#    
+#    return 
+#        dict_wavelet_events modified
+#        dict with mean_values and max power
+#    '''    
+#    
+#    dict_wavelet_events = wavelet_analysis_all_events(n_group, pop_rate_monitor, threshold_in_sd)
+#    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+#    dict_sts = {}
+#    min_time, max_time, max_power = 0, 0, 0
+#    
+#    # Get maximum values for normalization and standarization
+#    for event in dict_wavelet_events.keys():
+#        time_powers = dict_wavelet_events[event]['Time_array_max_power']
+#        powers = dict_wavelet_events[event]['Instantaneous_power']
+#        frequencies = dict_wavelet_events[event]['Instantaneous_frequency']
+#        min_time, max_time = min(min_time, time_powers[0]), max(max_time, time_powers[-1])
+#        max_power = max(max_power, max(powers))
+#        index_to_delete = np.where(frequencies[:len(frequencies)//2]==100)[0]
+#        adjusted_frequencies = np.zeros(len(frequencies))
+#        if len(index_to_delete) > 0: 
+#            adjusted_frequencies[index_to_delete] = np.nan * np.ones(len(index_to_delete))
+#            adjusted_frequencies[len(index_to_delete):] = frequencies[len(index_to_delete):]
+#        else:
+#            adjusted_frequencies = frequencies
+#        dict_wavelet_events[event]['Instantaneous_frequency'] = adjusted_frequencies
+#        dict_wavelet_events[event]['Time_delay_with_peak'] = time_powers[np.argmax(events[event]['Signal_array'])]
+#        
+#    
+#    time_all = np.around(np.arange(min_time, max_time+dt, dt), decimals=3)
+#    freq_matrix, powers_matrix = np.zeros((len(dict_wavelet_events.keys()), len(time_all))), np.zeros((len(dict_wavelet_events.keys()), len(time_all)))
+#    
+#    for event in dict_wavelet_events.keys():
+#        frequencies = dict_wavelet_events[event]['Instantaneous_frequency']
+#        powers = dict_wavelet_events[event]['Instantaneous_power']
+#        wspec = dict_wavelet_events[event]['wspec']
+#        
+#        indexes_1 = where(time_all < dict_wavelet_events[event]['Time_array_max_power'][0])[0]
+#        indexes_2 = where(dict_wavelet_events[event]['Time_array_max_power'][-1] <  time_all)[0]
+#        
+#        if len(indexes_1) > 0:
+#            frequencies = np.append(np.nan * np.ones (len(indexes_1)), frequencies) 
+#            powers = np.append(np.nan * np.ones (len(indexes_1)), powers)
+#            wspec = np.append(np.nan * np.ones((350,len(indexes_1))), wspec, axis=1)
+#        if len(indexes_2) > 0:
+#            frequencies = np.append(frequencies, np.nan * np.ones (len(indexes_2))) 
+#            powers = np.append(powers, np.nan * np.ones (len(indexes_2))) 
+#            wspec = np.append(wspec, np.nan * np.ones((350,len(indexes_2))), axis=1)    
+#            
+#        freq_matrix[event-1, :] = frequencies
+#        powers_matrix[event-1, :] = powers
+#
+#        dict_wavelet_events[event]['Time_array_max_power'] = time_all
+#        dict_wavelet_events[event]['Instantaneous_frequency'] = frequencies
+#        dict_wavelet_events[event]['Instantaneous_power'] = powers
+#        dict_wavelet_events[event]['wspec'] = wspec
+#        
+#
+#    dict_sts['Min_time'] = min_time
+#    dict_sts['Max_time'] = max_time
+#    dict_sts['Max_power'] = max_power
+#    dict_sts['Time_all_max_power'] = time_all
+#    dict_sts['Mean_frequencies_nan'] = np.nanmean(freq_matrix, axis=0)
+#    dict_sts['Mean_frequencies'] = np.mean(freq_matrix, axis=0)
+#    dict_sts['Mean_powers_nan'] = np.nanmean(powers_matrix, axis=0)
+#    dict_sts['Mean_powers'] = np.mean(powers_matrix, axis=0)
+#
+#    
+#    return dict_wavelet_events, dict_sts    
+#        
+#
+#def wavelet_plot_all_events(n_group, pop_rate_monitor, threshold_in_sd):
+#    '''
+#    Function to plot the wavelet of the ripple events in a signal
+#    '''
+#    dict_wavelet_events_adjust, dict_sts = adjust_dict_wavelet(n_group, pop_rate_monitor, threshold_in_sd)
+#    events, sim = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+#    
+#    colormap = plt.cm.viridis 
+#    normalize = matplotlib.colors.Normalize(vmin=0, vmax=int(dict_sts['Max_power']) + 1.)
+#    
+#    pdf_file_name = f'Wavelet_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+#    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+#        fig, ax = plt.subplots(len(events.keys()), 1, figsize=(21/cm, 12/cm), sharey=True, sharex=True)
+#        for i, event in enumerate(events.keys()):
+#            frequencies = dict_wavelet_events_adjust[event]['Instantaneous_frequency']
+#            powers = dict_wavelet_events_adjust[event]['Instantaneous_power']
+#            time_array_max_power = dict_wavelet_events_adjust[event]['Time_array_max_power']
+#            signal_array = events[event]['Signal_array']
+#            time_signal = events[event]['Time_array']
+#            peak_delay = dict_wavelet_events_adjust[event]['Time_delay_with_peak']
+#
+#            ax[i].grid(zorder= 0)
+#            p = ax[i].scatter(time_array_max_power, frequencies, c = powers, cmap=colormap, norm=normalize, marker='.', zorder=1)
+#            ax[i].text(x= 40, y = 170, s=f'Event {event}', zorder=3)
+#            ax2 = ax[i].twinx()
+#            ax2.plot(time_signal+peak_delay, signal_array, 'k', zorder=2)
+##            ax[i].set(ylabel='Frequency [Hz]')
+#        fig.subplots_adjust(right=0.8)
+#        cbar_ax = fig.add_axes([0.9, 0.15, 0.02, 0.7])
+#        fig.colorbar(p, cax=cbar_ax, label='Power')
+#
+#        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+#        fig.text(0.85, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
+#        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+#        pdf.savefig(fig)        
+#    
+#    pdf_file_name_2 = f'Wavelet_AVERAGE_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+#    with PdfPages(path_to_save_figures + pdf_file_name_2 + '.pdf') as pdf:
+#        fig, ax = plt.subplots(2, 1, figsize=(21/cm, 5/cm), sharey=True, sharex=True)
+#        ax[0].grid(zorder= 0)
+#        ax[0].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies_nan'], c = dict_sts['Mean_powers_nan'], 
+#          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'All data')
+#        ax[1].grid(zorder= 0)
+#        ax[1].scatter(dict_sts['Time_all_max_power'], dict_sts['Mean_frequencies'], c = dict_sts['Mean_powers'], 
+#          cmap=colormap, norm=normalize, marker='.', zorder=1, label = 'Cut data')
+#        fig.subplots_adjust(right=0.8)
+#        cbar_ax = fig.add_axes([0.9, 0.15, 0.02, 0.7])
+#        fig.colorbar(p, cax=cbar_ax, label='Power')
+#
+#        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+#        fig.text(0.85, 0.5, 'Network rate [Hz]', ha='center', va='center', rotation='270')  
+#        plt.savefig(path_to_save_figures + pdf_file_name_2 +'.png')
+#        pdf.savefig(fig)              
+#        
         
 
 #rate_signal, peak_per_event = find_events(n_group=G_E, pop_rate_monitor=R_E, threshold_in_sd=4, plot_peaks=True)
