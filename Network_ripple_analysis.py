@@ -34,18 +34,18 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 
 #name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_12000_network_3'
+name_network = 'long_10000_network_3'
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 
 # In order to restore the long network it is necessary to first create an object.
@@ -153,7 +153,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
         start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
         last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
         if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
-        else: last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
+        else: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
         
 #        first_value_above_thr = where(event_ranged > thr)[0][0]
 #        
@@ -626,7 +626,7 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
     frequencies = np.array([])
     pdf_file_name = f'Discrete_frequencies_SUMMARY_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 8/cm))
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 10/cm))
         for i, event in enumerate(dict_wavelet_information.keys()):
             max_peak_time = dict_wavelet_information[event]['Max_peak_time']
             frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
@@ -635,11 +635,13 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
             frequencies = np.append(frequencies, frequencies_discrete)
             
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
-                 , 
+        regression = stats.linregress(times, frequencies)
+        t = np.arange(min(times), max(times), 0.1)
+        y = regression.slope*t +regression.intercept
+        ax.plot(t,y, 'k')
         ax.grid(zorder= 0)
         ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
-        fig.subplots_adjust(right=0.8)
-        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
+        fig.text(0.7, 0.75, f'Slope= {np.round(regression.slope,4)} [Hz/ms]', c='k') 
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
