@@ -72,9 +72,27 @@ def store_networks(parameter_tochange = 'tau_exex', dur_simulation = 2000):
                                                 neurons_exc = arange(2), neurons_inh=arange(1),
                                                 tauDS = value *ms)
             network.store(name='rand_net', filename = path_networks + name_network + f'_{parameter_tochange}_{value}')
+    if parameter_tochange == 'tref_ex':
+        range_ofchange = np.arange(2.5, 3.6, 0.1)
+        for value in np.round(range_ofchange,2):
+            print(parameter_tochange, value)
+            network, monitors = Network_model_2(seed_num=8, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                                scale_factor=1, dendritic_interactions=True, 
+                                                neurons_exc = arange(2), neurons_inh=arange(1),
+                                                tref_ex = value *ms)
+            network.store(name='rand_net', filename = path_networks + name_network + f'_{parameter_tochange}_{value}')
+    if parameter_tochange == 'tref_in':
+        range_ofchange = np.arange(1.5, 2.6, 0.1)
+        for value in np.round(range_ofchange,2):
+            print(parameter_tochange, value)
+            network, monitors = Network_model_2(seed_num=8, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                                scale_factor=1, dendritic_interactions=True, 
+                                                neurons_exc = arange(2), neurons_inh=arange(1),
+                                                tref_in = value *ms)
+            network.store(name='rand_net', filename = path_networks + name_network + f'_{parameter_tochange}_{value}')
     
 def store_networks_texex_tDS(dur_simulation = 2000):
-    for param in ['tau_exex', 'tauDS']:
+    for param in ['tref_ex', 'tref_in']:
         store_networks(parameter_tochange = param, dur_simulation = dur_simulation)
 
 

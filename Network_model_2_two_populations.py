@@ -24,7 +24,7 @@ from brian2 import *
 from brian2 import ms, mV
 
 def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
-                    neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms):
+                    neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms, tref_ex = 3 *ms, tref_in = 2 *ms):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
@@ -56,13 +56,13 @@ def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons
     Cm_ex = 400 *pF
     gL_ex = 25 *nS
     Vt_ex= -45 *mV
-    tref_ex = 3 *ms
+#    tref_ex = 3 *ms
     
     # Constant variables for inhibitory population
     Cm_in = 200 *pF    # From 200 to 100 pF in figure S5 from Memesheimmer 2010
     gL_in = 25 *nS     # From 25 to 33 nS in figure S5 of Memmesheimer 2010
     Vt_in = -55 *mV
-    tref_in = 2 *ms
+#    tref_in = 2 *ms
     
     # Constant variables for dendritic spike
     A = 55 *nA

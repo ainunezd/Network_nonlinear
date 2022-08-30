@@ -34,42 +34,42 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-#path_to_save_figures = '/home/nunez/New_repo/Plots/'
-#path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
-#name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
-
-#name_network = 'long_baseline_no_dendritic_8'
-#name_network = 'long_random_network_8'
-name_network = 'long_10000_network_3'
-#name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
-
-# In order to restore the long network it is necessary to first create an object.
-# Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
-                                    scale_factor=1, dendritic_interactions=True, neurons_exc = np.arange(2), neurons_inh = np.arange(1))
-#network.store(name='rand_net', filename = path_networks + name_network)
-
-network.restore(name='rand_net', filename = path_networks + name_network)
-
-# Get monitors from the network
-M_E = network.sorted_objects[24]
-M_I = network.sorted_objects[25]
-M_DS = network.sorted_objects[-16]
-R_E = network.sorted_objects[-1]
-R_I = network.sorted_objects[-2]  
-State_G_ex = network.sorted_objects[2]
-State_G_in = network.sorted_objects[3]
-G_E = network.sorted_objects[0]
-G_I = network.sorted_objects[1]
-
-dt = 0.001
-cm = 2.54
+##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
+#
+##name_network = 'long_baseline_no_dendritic_8'
+##name_network = 'long_random_network_8'
+#name_network = 'long_10000_network_3'
+##name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
+#
+## In order to restore the long network it is necessary to first create an object.
+## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
+#dur_simulation=10
+#network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+#                                    scale_factor=1, dendritic_interactions=True, neurons_exc = np.arange(2), neurons_inh = np.arange(1))
+##network.store(name='rand_net', filename = path_networks + name_network)
+#
+#network.restore(name='rand_net', filename = path_networks + name_network)
+#
+## Get monitors from the network
+#M_E = network.sorted_objects[24]
+#M_I = network.sorted_objects[25]
+#M_DS = network.sorted_objects[-16]
+#R_E = network.sorted_objects[-1]
+#R_I = network.sorted_objects[-2]  
+#State_G_ex = network.sorted_objects[2]
+#State_G_in = network.sorted_objects[3]
+#G_E = network.sorted_objects[0]
+#G_I = network.sorted_objects[1]
+#
+#dt = 0.001
+#cm = 2.54
 
 
 def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=False):
@@ -133,59 +133,66 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     simulation_props['Max_peak_index'] = max_peak_indexes
     simulation_props['Baseline'] = baseline
     simulation_props['Threshold'] = thr
-#    figure()
-    for i, index in enumerate(max_peak_indexes):
-        print(i, index)
-        event_props[i+1] = {}
-        
-        start_event_approx = int(index - 70/dt)
-        end_event_appox = int(index + 70/dt)
-        event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
-        time_ranged = time_signal[start_event_approx:end_event_appox]
-#        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
-        peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
-        
-        index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
-        
-        peaks_below_thr_indexes = where(event_ranged[peaks] < thr)[0]
-        #taking into account the first peak of the event to be one before the first peak above threshold.
-        first_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes < index_peak_max)[0]][-1]
-        start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
-        last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
-        if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
-        else: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
-        
-#        first_value_above_thr = where(event_ranged > thr)[0][0]
-#        
-#        
-#        first_value_below_thr = where(event_ranged < thr)
-#        not_first = where(peaks > first_value_above_thr)[0]
-#        if not_first[0] == 0: first_peak_index = peaks[0]
-#        else: first_peak_index = peaks[not_first[0]-1]
-#            
-#        last_value_above_thr = where(event_ranged > thr)[0][-1]
-#        not_last = where(peaks < last_value_above_thr)[0]
-#        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
-#        else: last_peak_index = peaks[not_last[-1] + 1]
-#        
-#        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
-#        start_index = index_below_baseline_1[-1]
-#        
-#        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
-#        end_index = last_peak_index + index_below_baseline_2[0] - 1
-
-        time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
-        event = event_ranged[start_index_event:end_index_event]
-#        peaks = peaks[first_peak_index:last_peak_index+1] - start_index
-        event_props[i+1]['Time_array'] = time_event
-        event_props[i+1]['Signal_array'] = event
-        event_props[i+1]['Duration']= len(time_event)*dt
-        event_props[i+1]['Index_start']= start_event_approx + start_index_event
-        event_props[i+1]['Index_end']= start_event_approx + end_index_event
-
-        if plot_peaks_bool:
-            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}'
-            with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+    pdf_file_name = f'Net_{name_network}_allevents_G_E_tr_{threshold_in_sd}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:    
+        for i, index in enumerate(max_peak_indexes):
+            print(i, index)
+            event_props[i+1] = {}
+            
+            start_event_approx = int(index - 70/dt)
+            end_event_appox = int(index + 70/dt)
+            event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
+            time_ranged = time_signal[start_event_approx:end_event_appox]
+    #        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
+            peaks, prop = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
+            
+            index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
+            
+            peaks_below_thr_indexes = where(event_ranged[peaks] < thr)[0]
+            #taking into account the first peak of the event to be one before the first peak above threshold.
+            if len(where(peaks_below_thr_indexes < index_peak_max)[0]) == 0: 
+                first_peak_event_index = 0
+                start_index_event = np.argmin(event_ranged[:peaks[first_peak_event_index]]) 
+            else:
+                first_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes < index_peak_max)[0]][-1]
+                start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
+            
+            
+            if len(where(peaks_below_thr_indexes > index_peak_max)[0]) == 0: last_peak_event_index = len(peaks)-1
+            else: last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
+            if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
+            else: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
+            
+    #        first_value_above_thr = where(event_ranged > thr)[0][0]
+    #        
+    #        
+    #        first_value_below_thr = where(event_ranged < thr)
+    #        not_first = where(peaks > first_value_above_thr)[0]
+    #        if not_first[0] == 0: first_peak_index = peaks[0]
+    #        else: first_peak_index = peaks[not_first[0]-1]
+    #            
+    #        last_value_above_thr = where(event_ranged > thr)[0][-1]
+    #        not_last = where(peaks < last_value_above_thr)[0]
+    #        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
+    #        else: last_peak_index = peaks[not_last[-1] + 1]
+    #        
+    #        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
+    #        start_index = index_below_baseline_1[-1]
+    #        
+    #        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
+    #        end_index = last_peak_index + index_below_baseline_2[0] - 1
+    
+            time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
+            event = event_ranged[start_index_event:end_index_event]
+    #        peaks = peaks[first_peak_index:last_peak_index+1] - start_index
+            event_props[i+1]['Time_array'] = time_event
+            event_props[i+1]['Signal_array'] = event
+            event_props[i+1]['Duration']= len(time_event)*dt
+            event_props[i+1]['Index_start']= start_event_approx + start_index_event
+            event_props[i+1]['Index_end']= start_event_approx + end_index_event
+    
+            if plot_peaks_bool:
+    
                 fig = figure(figsize=(10/cm, 10/cm))
     
                 plot(time_ranged, event_ranged, 'k')
@@ -198,7 +205,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
                 legend()
                 gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', title=f'Network_{name_network[-1]}_Event_{i+1}')
     
-                savefig(path_to_save_figures + pdf_file_name +'.png')
+#                savefig(path_to_save_figures + pdf_file_name +'.png')
                 pdf.savefig(fig)
             
     return event_props, simulation_props
@@ -596,8 +603,9 @@ def discrete_freq_analysis(dict_wavelet_information):
     
     pdf_file_name = f'Discrete_frequencies_all_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig, ax = plt.subplots(num_events, 1, figsize=(21/cm, 21/cm), sharex=True, sharey=True)
+#        fig, ax = plt.subplots(num_events, 1, figsize=(21/cm, 21/cm), sharex=True, sharey=True)
         for i, event in enumerate(dict_wavelet_information.keys()):
+            fig, ax = plt.subplots(1, 1, figsize=(21/cm, 21/cm))
             max_peak_time = dict_wavelet_information[event]['Max_peak_time']
             frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
             time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time
@@ -606,15 +614,16 @@ def discrete_freq_analysis(dict_wavelet_information):
             time_values = np.arange(dict_wavelet_information[event]['Discrete_frequency_time'][0], dict_wavelet_information[event]['Discrete_frequency_time'][-1]+dt, dt)
             regression_values = time_values * slope + intercept
             
-            ax[i].grid(zorder= 0)
-            ax[i].scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.', label=f'Event {event}')
-            ax[i].plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
-            ax[i].legend()
-        ax[i].set(xlabel='Time w.r.t. highest peak')
-        fig.subplots_adjust(right=0.8)
-        fig.text(0.06, 0.5, 'Frequency [Hz]', ha='center', va='center', rotation='vertical')  
-        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
-        pdf.savefig(fig)        
+            ax.grid(zorder= 0)
+            ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.', label=f'Event {event}')
+            ax.plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
+            ax.legend()
+            
+            ax.set(xlabel='Time w.r.t. highest peak', ylabel = 'Frequency [Hz]')
+            fig.subplots_adjust(right=0.8)
+            pdf.savefig(fig)        
+        
+        plt.close('all')
 
 def plot_all_discrete_frequencies(dict_wavelet_information):
     '''
@@ -635,13 +644,14 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
             frequencies = np.append(frequencies, frequencies_discrete)
             
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
+            
         regression = stats.linregress(times, frequencies)
         t = np.arange(min(times), max(times), 0.1)
         y = regression.slope*t +regression.intercept
         ax.plot(t,y, 'k')
         ax.grid(zorder= 0)
         ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
-        fig.text(0.7, 0.75, f'Slope= {np.round(regression.slope,4)} [Hz/ms]', c='k') 
+        fig.text(0.7, 0.75, f'Slope= {np.round(regression.slope,4)} [Hz/ms]') 
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
