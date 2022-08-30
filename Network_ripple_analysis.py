@@ -34,18 +34,18 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-#path_to_save_figures = '/home/nunez/New_repo/Plots/'
-#path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 #name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 
 #name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_10000_network_3'
+name_network = 'long_12000_network_3'
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 
 # In order to restore the long network it is necessary to first create an object.
@@ -104,6 +104,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
             legend()
             gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
             savefig(path_to_save_figures + pdf_file_name +'.png')
+            savefig(path_to_save_figures + pdf_file_name +'.eps')
             pdf.savefig(fig)
 
     return time, rate_signal, peaks
@@ -134,6 +135,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     simulation_props['Threshold'] = thr
 #    figure()
     for i, index in enumerate(max_peak_indexes):
+        print(i, index)
         event_props[i+1] = {}
         
         start_event_approx = int(index - 70/dt)
@@ -150,8 +152,8 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
         first_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes < index_peak_max)[0]][-1]
         start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
         last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
-        end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
-        
+        if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
+        else: last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
         
 #        first_value_above_thr = where(event_ranged > thr)[0][0]
 #        
@@ -559,8 +561,9 @@ def get_wavelet_information(n_group, pop_rate_monitor, threshold_in_sd):
     total_time = sim['Total_time']
     peak_indexes = sim['Max_peak_index']
     dict_wavelet = {}
-    
+    print(f'Num_events: {len(events.keys())}')
     for i, event in enumerate(events.keys()):
+        print(f'Event: {event}')
         dict_wavelet[event] = {}
         start = events[event]['Index_start']
         end = events[event]['Index_end']
@@ -632,7 +635,7 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
             frequencies = np.append(frequencies, frequencies_discrete)
             
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
-        
+                 , 
         ax.grid(zorder= 0)
         ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
         fig.subplots_adjust(right=0.8)
@@ -641,6 +644,62 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
         pdf.savefig(fig)     
 
 
+def store_long_networks(time_simulation = 50000, neu_ext = False, neu_inh = False):
+    
+    seeds = [222,1001,6016, 770, 8, 769]
+    network_num = [2,3,6,7,8,9]
+    
+    for i, net_num in enumerate(network_num):
+        print(i, net_num)
+        name_network = f'long_50000_network_{net_num}'
+
+        network, monitors = Network_model_2(seed_num=seeds[i], sim_dur=time_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                    scale_factor=1, dendritic_interactions=True, neurons_exc = neu_ext, neurons_inh = neu_inh)
+        network.store(name='rand_net', filename = path_networks + name_network)
+        # Get monitors from the network
+        M_E = network.sorted_objects[24]
+        M_I = network.sorted_objects[25]
+        M_DS = network.sorted_objects[-16]
+        R_E = network.sorted_objects[-1]
+        R_I = network.sorted_objects[-2]  
+        State_G_ex = network.sorted_objects[2]
+        State_G_in = network.sorted_objects[3]
+        G_E = network.sorted_objects[0]
+        G_I = network.sorted_objects[1]
+        
+        dt = 0.001
+        cm = 2.54    
+        
+        time, signal, peaks = find_events(G_E, R_E, 3, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=True)
+
+def restore_net_and_dataframe():
+    name_network = 'long_50000_network_2'
+    #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
+    
+    # In order to restore the long network it is necessary to first create an object.
+    # Therefore, here I create a network of only 20 ms and on it, I restore the long one.
+    dur_simulation=10
+    network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                        scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
+    #network.store(name='rand_net', filename = path_networks + name_network)
+    
+    network.restore(name='rand_net', filename = path_networks + name_network)
+    
+    # Get monitors from the network
+    M_E = network.sorted_objects[24]
+    M_I = network.sorted_objects[25]
+    M_DS = network.sorted_objects[-16]
+    R_E = network.sorted_objects[-1]
+    R_I = network.sorted_objects[-2]  
+    State_G_ex = network.sorted_objects[2]
+    State_G_in = network.sorted_objects[3]
+    G_E = network.sorted_objects[0]
+    G_I = network.sorted_objects[1]
+    
+    dt = 0.001
+    cm = 2.54
+    
+    
 
 #    
 #    pdf_file_name_2 = f'Wavelet_AVERAGE_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
