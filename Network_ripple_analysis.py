@@ -34,18 +34,18 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
-
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 ##name_network = 'long_random_network_8'
-#name_network = 'long_10000_network_3'
+name_network = 'long_random_network_8_tref_ex_1'
 ##name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 #
 ## In order to restore the long network it is necessary to first create an object.
@@ -68,11 +68,11 @@ path_networks = '/home/nunez/New_repo/stored_networks/'
 #G_E = network.sorted_objects[0]
 #G_I = network.sorted_objects[1]
 #
-#dt = 0.001
+dt = 0.001
 #cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=False):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=False, dt=dt):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -90,7 +90,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
     rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
 #    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
     thr = mean(rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) + threshold_in_sd * std(rate_signal) 
-    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 70/dt)
+    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 50/dt)
     time = pop_rate_monitor.t / ms
 
     if plot_peaks:
@@ -162,29 +162,12 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
             else: last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
             if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
             else: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
-            
-    #        first_value_above_thr = where(event_ranged > thr)[0][0]
-    #        
-    #        
-    #        first_value_below_thr = where(event_ranged < thr)
-    #        not_first = where(peaks > first_value_above_thr)[0]
-    #        if not_first[0] == 0: first_peak_index = peaks[0]
-    #        else: first_peak_index = peaks[not_first[0]-1]
-    #            
-    #        last_value_above_thr = where(event_ranged > thr)[0][-1]
-    #        not_last = where(peaks < last_value_above_thr)[0]
-    #        if not_last[-1] == len(peaks)-1: last_peak_index = peaks[not_last[-1]]
-    #        else: last_peak_index = peaks[not_last[-1] + 1]
-    #        
-    #        index_below_baseline_1 = where(event_ranged[:first_peak_index] < baseline)[0]
-    #        start_index = index_below_baseline_1[-1]
-    #        
-    #        index_below_baseline_2 = where(event_ranged[last_peak_index:] < baseline)[0]
-    #        end_index = last_peak_index + index_below_baseline_2[0] - 1
+
     
             time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
             event = event_ranged[start_index_event:end_index_event]
-    #        peaks = peaks[first_peak_index:last_peak_index+1] - start_index
+            
+            event_props[i+1]['Max_peak_time'] = index*dt
             event_props[i+1]['Time_array'] = time_event
             event_props[i+1]['Signal_array'] = event
             event_props[i+1]['Duration']= len(time_event)*dt
@@ -594,29 +577,45 @@ def get_wavelet_information(n_group, pop_rate_monitor, threshold_in_sd):
     return dict_wavelet
 
     
-def discrete_freq_analysis(dict_wavelet_information):
+def discrete_freq_analysis(dict_information, wavelet = True):
     '''
     Function to plot and analyse the instantaneous frequency
+    dict_information could come from wavelet or from simple period discrete frequency analysis
     '''
-    num_events = len(dict_wavelet_information.keys())
+    num_events = len(dict_information.keys())
     colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
-    
+    if wavelet: pdf_file_name = f'Discrete_frequencies_all_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}_wavelet'
     pdf_file_name = f'Discrete_frequencies_all_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
 #        fig, ax = plt.subplots(num_events, 1, figsize=(21/cm, 21/cm), sharex=True, sharey=True)
-        for i, event in enumerate(dict_wavelet_information.keys()):
+        for i, event in enumerate(dict_information.keys()):
             fig, ax = plt.subplots(1, 1, figsize=(21/cm, 21/cm))
-            max_peak_time = dict_wavelet_information[event]['Max_peak_time']
-            frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
-            time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time
-            slope = dict_wavelet_information[event]['slope_intercept'][0]
-            intercept = dict_wavelet_information[event]['slope_intercept'][1]
-            time_values = np.arange(dict_wavelet_information[event]['Discrete_frequency_time'][0], dict_wavelet_information[event]['Discrete_frequency_time'][-1]+dt, dt)
-            regression_values = time_values * slope + intercept
+            if wavelet:
+                max_peak_time = dict_wavelet_information[event]['Max_peak_time']
+                frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
+                time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time
+                slope = dict_wavelet_information[event]['slope_intercept'][0]
+                intercept = dict_wavelet_information[event]['slope_intercept'][1]
+                time_values = np.arange(dict_wavelet_information[event]['Discrete_frequency_time'][0], dict_wavelet_information[event]['Discrete_frequency_time'][-1]+dt, dt)
+                regression_values = time_values * slope + intercept
+            else:
+                max_peak_time = dict_information[event]['Max_peak_time']
+                frequencies_discrete = dict_information[event]['Instant_frequency']
+                time_values = dict_information[event]['Time_array']
+                time_discrete = time_values[dict_information[event]['Indices_frequency']]
+                res = stats.linregress(time_discrete, frequencies_discrete)
+                slope = res.slope
+                intercept = res.intercept
+                regression_values = time_values * slope + intercept
+                
+            
+            
+            
             
             ax.grid(zorder= 0)
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.', label=f'Event {event}')
-            ax.plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
+            if wavelet: ax.plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
+            else: ax.plot(time_values, regression_values, color=colors[i], linestyle='-')
             ax.legend()
             
             ax.set(xlabel='Time w.r.t. highest peak', ylabel = 'Frequency [Hz]')
@@ -625,26 +624,36 @@ def discrete_freq_analysis(dict_wavelet_information):
         
         plt.close('all')
 
-def plot_all_discrete_frequencies(dict_wavelet_information):
+def plot_all_discrete_frequencies(dict_information, wavelet=True, short_event = True):
     '''
     Function to plot and analyse the instantaneous frequency
+    if short_event is true. Then we only take the frequencies between -20 to 20 ms from the max peak
     '''
-    num_events = len(dict_wavelet_information.keys())
+    num_events = len(dict_information.keys())
     colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
     times = np.array([])
     frequencies = np.array([])
-    pdf_file_name = f'Discrete_frequencies_SUMMARY_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    pdf_file_name = f'Discrete_frequencies_SUMMARY_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}_short_event'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         fig, ax = plt.subplots(1, 1, figsize=(21/cm, 10/cm))
-        for i, event in enumerate(dict_wavelet_information.keys()):
-            max_peak_time = dict_wavelet_information[event]['Max_peak_time']
-            frequencies_discrete = dict_wavelet_information[event]['Discrete_frequency']
-            time_discrete = dict_wavelet_information[event]['Discrete_frequency_time'] - max_peak_time      
+        for i, event in enumerate(dict_information.keys()):
+            if wavelet:
+                max_peak_time = dict_information[event]['Max_peak_time']
+                frequencies_discrete = dict_information[event]['Discrete_frequency']
+                time_discrete = dict_information[event]['Discrete_frequency_time'] - max_peak_time     
+            else:
+                frequencies_discrete = dict_information[event]['Instant_frequency']
+                time_values = dict_information[event]['Time_array']
+                time_discrete = time_values[dict_information[event]['Indices_frequency']]
+                
             times = np.append(times, time_discrete)
             frequencies = np.append(frequencies, frequencies_discrete)
-            
+
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
-            
+        if short_event:
+            mask = np.where((times<20) & (times>-20))[0]     
+            frequencies = frequencies[mask]
+            times = times[mask]
         regression = stats.linregress(times, frequencies)
         t = np.arange(min(times), max(times), 0.1)
         y = regression.slope*t +regression.intercept
@@ -655,6 +664,7 @@ def plot_all_discrete_frequencies(dict_wavelet_information):
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
+# Store and restore long networks---------------------------------------------------------
 
 def store_long_networks(time_simulation = 50000, neu_ext = False, neu_inh = False):
     

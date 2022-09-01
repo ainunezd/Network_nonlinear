@@ -30,17 +30,17 @@ from matplotlib.ticker import MaxNLocator
 
 
 from Network_model_2_two_populations import Network_model_2
-from Network_ripple_analysis import find_events
+from Network_ripple_analysis import find_events, define_event, prop_events
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
-name_network = 'long_random_network_8'
+name_network = 'long_random_network_8_tref_ex_1'
 
 
 # ----------------------------DECREASE of exc-exc delay-------------------------
@@ -96,7 +96,13 @@ def store_networks_texex_tDS(dur_simulation = 2000):
         store_networks(parameter_tochange = param, dur_simulation = dur_simulation)
 
 
-#network.restore(name='rand_net', filename = path_networks + name_network)
+#name_network = 'long_random_network_8_tau_exex_0.9'
+#network, monitors = Network_model_2(seed_num=8, sim_dur=10*ms, pre_run_dur=0*ms, total_neurons=1000, 
+#                                    scale_factor=1, dendritic_interactions=True, 
+#                                    neurons_exc = arange(2), neurons_inh=arange(1))
+#
+#
+network.restore(name='rand_net', filename = path_networks + name_network)
 
 # Get monitors from the network
 M_E = network.sorted_objects[24]
