@@ -28,31 +28,32 @@ import cmasher as cmr
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MaxNLocator
+from sklearn.svm import SVR
 
 
 from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
-name_network = 'long_random_network_9'
-#name_network = 'long_50000_network_2'
+#name_network = 'long_random_network_8'
+name_network = 'long_50000_network_2'
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
 #
 ## In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=10
 network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
-                                    scale_factor=1, dendritic_interactions=True, neurons_exc = np.arange(2), neurons_inh = np.arange(1))
+                                    scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
 ##network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -145,9 +146,13 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
             event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
             time_ranged = time_signal[start_event_approx:end_event_appox]
     #        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
-            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 4/dt)
+            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 4/dt, prominence=1)
             peaks_2, prop_2 = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
             index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
+            outliers = np.where(diff(peaks)>8000)[0]
+            if sum(outliers<index_peak_max) > 0: peaks = peaks[outliers[-1]+1:]
+            outliers_2 = np.where(diff(peaks)>8000)[0]
+            if sum(outliers_2>index_peak_max) > 0: peaks = peaks[:outliers_2[0]+1]
             first_peak_event_index = peaks[0]
             pre_peak = np.where(first_peak_event_index==peaks_2)[0][0]
             last_peak_event_index = peaks[-1]
@@ -157,22 +162,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
             if len(peaks_2)==post_peak+1: end_index_event = np.argmin(event_ranged[last_peak_event_index:]) + last_peak_event_index
             else: end_index_event = np.argmin(event_ranged[last_peak_event_index:peaks_2[post_peak+1]]) + last_peak_event_index
             
-#            peaks_below_thr_indexes = where(event_ranged[peaks] < thr)[0]
-#            #taking into account the first peak of the event to be one before the first peak above threshold.
-#            if len(where(peaks_below_thr_indexes < index_peak_max)[0]) == 0: 
-#                first_peak_event_index = 0
-#                start_index_event = np.argmin(event_ranged[:peaks[first_peak_event_index]]) 
-#            else:
-#                first_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes < index_peak_max)[0]][-1]
-#                start_index_event = np.argmin(event_ranged[peaks[first_peak_event_index-1]:peaks[first_peak_event_index]]) + peaks[first_peak_event_index-1]
-#            
-#            
-#            if len(where(peaks_below_thr_indexes > index_peak_max)[0]) == 0: last_peak_event_index = len(peaks)-1
-#            else: last_peak_event_index = peaks_below_thr_indexes[where(peaks_below_thr_indexes > index_peak_max)[0]][0]
-#            if len(peaks)-1 == last_peak_event_index: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:]) + peaks[last_peak_event_index]
-#            else: end_index_event = np.argmin(event_ranged[peaks[last_peak_event_index]:peaks[last_peak_event_index+1]]) + peaks[last_peak_event_index]
-#
-    
+            index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
             time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
             event = event_ranged[start_index_event:end_index_event]
             
@@ -191,6 +181,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
                 axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
                 axhline(y=thr_2sd, c='gray', linestyle='dashed', label='Threshold 2 sd')
                 scatter(time_ranged[peaks[first_peak_event_index:last_peak_event_index+1]], event_ranged[peaks[first_peak_event_index:last_peak_event_index+1]], c='orange')        
+                scatter(time_ranged[peaks], event_ranged[peaks], c='orange')
                 scatter(time_ranged[index-start_event_approx], event_ranged[index-start_event_approx], c='r')
                 scatter(time_ranged[start_index_event], event_ranged[start_index_event], c='b', label='Start_end')
                 scatter(time_ranged[end_index_event], event_ranged[end_index_event], c='b')
@@ -199,9 +190,10 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     
 #                savefig(path_to_save_figures + pdf_file_name +'.png')
                 pdf.savefig(fig)
+                plt.close(fig)
             
     return event_props, simulation_props
-        
+
 def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False):
     '''
     Function to determine the properties of each event such as number of peaks, 
@@ -234,6 +226,11 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         start_cycles = peaks - min_dist_peak_tobase_xaxis
         end_cycles = peaks + min_dist_peak_tobase_xaxis
         spikes_percycle = np.zeros(len(peaks))
+        long_slope = stats.linregress(time[indexes_freq], freq).slope
+        mask = np.where((time[indexes_freq]<20) & (time[indexes_freq]>-20))[0]
+        short_time = time[indexes_freq][mask]
+        short_freq = freq[mask] 
+        short_slope = stats.linregress(short_time, short_freq).slope
 #        res_width = signal.peak_widths(signal_event, peaks, rel_height=1)
 #        res_width_half = signal.peak_widths(signal_event, peaks, rel_height=0.5)
         events_dict[event]['Oscillation_events'] = {}
@@ -248,7 +245,8 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         events_dict[event]['Indices_frequency'] = indexes_freq
         events_dict[event]['Mean_frequency'] = mean(freq)
         events_dict[event]['Spikes_per_cycle'] = spikes_percycle
-        
+        events_dict[event]['Short_freq_time_slope'] = short_slope
+        events_dict[event]['Long_freq_time_slope'] = long_slope
 
         if plot_peaks_bool:
             pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}_cut'
@@ -713,7 +711,8 @@ def plot_all_discrete_frequencies(dict_information, n_group, wavelet=True, short
             times = times[mask]
 #        from sklearn.svm import SVC
         t = np.arange(min(times), max(times), 0.1)
-        model = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
+#        model = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
+        model = SVR(kernel='rbf')
         freq_predict = model.fit(times.reshape(-1, 1),frequencies).predict(t.reshape(-1, 1))
         regression = stats.linregress(times, frequencies)
 #        t = np.arange(min(times), max(times), 0.1)
@@ -726,6 +725,8 @@ def plot_all_discrete_frequencies(dict_information, n_group, wavelet=True, short
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
+
+#def plot
 # Store and restore long networks---------------------------------------------------------
 
 def store_long_networks(time_simulation = 50000, neu_ext = False, neu_inh = False):
