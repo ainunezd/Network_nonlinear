@@ -46,14 +46,14 @@ path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_50000_network_2'
-#name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms
+#name_network = 'long_50000_network_2' #Neurons false
+name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=10
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
-                                    scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
+dur_simulation=1
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=1600*ms, total_neurons=1000, 
+                                    scale_factor=1, dendritic_interactions=True, neurons_exc = True, neurons_inh = True)
 ##network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -73,7 +73,7 @@ dt = 0.001
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, baseline_start=0, baseline_end=300, plot_peaks=False, dt=dt):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, smoothing = 0.3, baseline_start=0, baseline_end=300, plot_peaks=False, dt=dt):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -88,14 +88,14 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
         
     
     '''
-    rate_signal = pop_rate_monitor.smooth_rate(width=1*ms)*len(n_group) / kHz
+    rate_signal = pop_rate_monitor.smooth_rate(width=smoothing*ms)*len(n_group) / kHz
 #    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
     thr = mean(rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) + threshold_in_sd * std(rate_signal) 
     peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 100/dt)
     time = pop_rate_monitor.t / ms
 
     if plot_peaks:
-        pdf_file_name = f'Events_detected_G_E_tr_{threshold_in_sd}_{name_net}'
+        pdf_file_name = f'Events_detected_G_E_tr_{threshold_in_sd}_{name_net}_windowsmooth_{smoothing}'
         with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
             fig = figure()
             plot(time, rate_signal, c='k')
@@ -110,7 +110,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
 
     return time, rate_signal, peaks
 
-def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
+def define_event(n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.3, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
     '''
     Function to define the start, end and therefore duration of a ripple event
     n_group: Neuron group
@@ -124,7 +124,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
 #    pop_rate_monitor=R_E
 #    threshold_in_sd=3
 #    
-    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks=False)
+    time_signal, pop_rate_signal, max_peak_indexes = find_events(n_group, pop_rate_monitor, threshold_in_sd, smoothing=smooth_win, plot_peaks=False)
     baseline = mean(pop_rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) # Change BASELINE to only the mean of first 400 ms.
     thr = baseline + threshold_in_sd * std(pop_rate_signal) 
     thr_2sd = baseline+2*std(pop_rate_signal)
@@ -135,7 +135,8 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     simulation_props['Max_peak_index'] = max_peak_indexes
     simulation_props['Baseline'] = baseline
     simulation_props['Threshold'] = thr
-    pdf_file_name = f'Net_{name_network}_allevents_G_E_tr_{threshold_in_sd}'
+    simulation_props['Threshold_2sd'] = thr_2sd
+    pdf_file_name = f'Net_{name_network}_allevents_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_smoothwin_{smooth_win}'
     with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:    
         for i, index in enumerate(max_peak_indexes):
             print(i, index)
@@ -146,13 +147,16 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
             event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
             time_ranged = time_signal[start_event_approx:end_event_appox]
     #        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
-            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 4/dt, prominence=1)
+            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 2/dt, prominence=0.5)
             peaks_2, prop_2 = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
             index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
             outliers = np.where(diff(peaks)>8000)[0]
             if sum(outliers<index_peak_max) > 0: peaks = peaks[outliers[-1]+1:]
             outliers_2 = np.where(diff(peaks)>8000)[0]
             if sum(outliers_2>index_peak_max) > 0: peaks = peaks[:outliers_2[0]+1]
+            if len(peaks)<2: 
+                del event_props[i+1]
+                continue
             first_peak_event_index = peaks[0]
             pre_peak = np.where(first_peak_event_index==peaks_2)[0][0]
             last_peak_event_index = peaks[-1]
@@ -175,7 +179,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, baseline_start=0, b
     
             if plot_peaks_bool:
     
-                fig = figure(figsize=(10/cm, 10/cm))
+                fig = figure(figsize=(21/cm, 10/cm))
     
                 plot(time_ranged, event_ranged, 'k')
                 axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
@@ -201,15 +205,19 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
     
     '''
        
-    events_dict, simulation_dict = define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+    events_dict, simulation_dict = define_event(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=True)
     
     for i, event in enumerate(events_dict.keys()):
-    
+#        if len(events_dict[event])==0: 
+#            del events_dict[event]
+#            continue
+        print(event)
         time = events_dict[event]['Time_array']
         signal_event = events_dict[event]['Signal_array']
         baseline = simulation_dict['Baseline']
         threshold = simulation_dict['Threshold']
-        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
+        threshold_2sd = simulation_dict['Threshold_2sd']
+        peaks, props = signal.find_peaks(signal_event, height = threshold_2sd, distance = 2/dt, prominence=0.5)
 #        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 4/dt)
 #        index_out = where(props['prominences'] < 1)[0]
         left_bases = props['left_bases']
@@ -249,7 +257,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         events_dict[event]['Long_freq_time_slope'] = long_slope
 
         if plot_peaks_bool:
-            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_E_tr_{threshold_in_sd}_cut'
+            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_cut'
             with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
                 fig = figure(figsize=(10/cm, 10/cm))
     
@@ -280,7 +288,7 @@ def plot_all_simulation(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event
     index_peaks = simulation_dict['Max_peak_index']
     baseline = simulation_dict['Baseline']
     
-    pdf_file_name = f'All_simulation_G_E_tr_{threshold_in_sd}_{name_network}'
+    pdf_file_name = f'All_simulation_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_{name_network}'
     with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         fig = figure(figsize=(10/cm, 10/cm))
         plot(time, rate_signal, c='k')
@@ -305,7 +313,7 @@ def plot_all_events_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_even
     mean_freq = np.zeros(num_events)
     
     colors = cmr.take_cmap_colors('viridis', num_events, return_fmt='hex') 
-    pdf_file_name = f'All_events_prop_G_E_tr_{threshold_in_sd}_{name_network}'
+    pdf_file_name = f'All_events_prop_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_{name_network}'
     with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         fig = plt.figure(figsize=(21/cm,10/cm))
         gs0 = gridspec.GridSpec(1, 3, figure=fig, wspace=1/cm, hspace=0/cm)
@@ -365,7 +373,7 @@ def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor
     '''
 #    pop_spikes_monitor = M_E
 #    pop_event_monitor = M_DS    
-    pdf_file_name = f'Spiking_properties_G_E_th_{threshold_in_sd}_{name_network}'
+    pdf_file_name = f'Spiking_properties_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
         total_events = len(events_dict.keys())
@@ -477,7 +485,7 @@ def plot_scatter_spikes(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event
     total_events = len(events_dict.keys())
     colors = cmr.take_cmap_colors('viridis', total_events, return_fmt='hex') 
 
-    pdf_file_name = f'Spiking_relation_G_E_th_{threshold_in_sd}_Net_{name_network[-1]}'
+    pdf_file_name = f'Spiking_relation_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_Net_{name_network[-1]}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         fig, ax = subplots(total_events, 1, figsize=(18/cm,23.7/cm), sharex=True, sharey=True)
         
@@ -726,7 +734,36 @@ def plot_all_discrete_frequencies(dict_information, n_group, wavelet=True, short
         pdf.savefig(fig)     
 
 
-#def plot
+def plot_histogram_slopes(dict_information, n_group, short_event=True):
+    '''
+    dict_information could be the dictorionary from wavelet analysis or events_dict
+    short event only take the slopes from -20 to 20 ms
+    '''
+    slopes = np.array([])    
+    if short_event: 
+        pdf_file_name = f'Histogram_slopes_G_{n_group.name[-2].upper()}_{name_network}_short_event'
+        type_slope = 'Short_freq_time_slope'
+    else: 
+        pdf_file_name = f'Histogram_slopes_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+        type_slope = 'Long_freq_time_slope'
+    for event in dict_information.keys():
+        slopes = np.append(slopes, dict_information[event][type_slope])    
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 10/cm))
+        mean_val = np.mean(slopes)
+        median_val = np.median(slopes)
+        ax.hist(slopes, bins=100, histtype='step', color='k')
+        ax.set(xlabel='Slopes [Hz/ms]')
+        lims = ax.get_ylim()
+        ax.axvline(x=mean_val, ymin=lims[0], ymax=lims[1], color='r', label=f'Mean value {np.round(mean_val, 4)}')
+        ax.axvline(x=median_val, ymin=lims[0], ymax=lims[1], color='orange', label=f'Median value {np.round(median_val, 4)}')
+        ax.legend()
+        
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig) 
+    
+    
+    
 # Store and restore long networks---------------------------------------------------------
 
 def store_long_networks(time_simulation = 50000, neu_ext = False, neu_inh = False):
