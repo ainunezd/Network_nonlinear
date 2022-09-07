@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from brian2 import *
 from brian2 import ms, mV
 
-def Network_model_2(seed_num, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
+def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
                     neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms, tref_ex = 3 *ms, tref_in = 2 *ms):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 

@@ -35,25 +35,25 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-#path_to_save_figures = '/home/nunez/New_repo/Plots/'
-#path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-#name_network = 'long_50000_network_2' #Neurons false
-name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
+name_network = 'long_50000_network_8' #Neurons false
+#name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=1
-network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=1600*ms, total_neurons=1000, 
-                                    scale_factor=1, dendritic_interactions=True, neurons_exc = True, neurons_inh = True)
+dur_simulation=10
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                    scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
 ##network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -73,7 +73,7 @@ dt = 0.001
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, smoothing = 0.3, baseline_start=0, baseline_end=300, plot_peaks=False, dt=dt):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_network, smoothing = 0.5, baseline_start=0, baseline_end=300, plot_peaks=False, dt=dt):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -110,7 +110,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net=name_networ
 
     return time, rate_signal, peaks
 
-def define_event(n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.3, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
+def define_event(n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.5, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
     '''
     Function to define the start, end and therefore duration of a ripple event
     n_group: Neuron group
@@ -147,13 +147,14 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.3, bas
             event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
             time_ranged = time_signal[start_event_approx:end_event_appox]
     #        peaks, props = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt, prominence=1, width=[1000,4000])
-            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 2/dt, prominence=0.5)
-            peaks_2, prop_2 = signal.find_peaks(event_ranged, height = baseline, distance = 4/dt)
+            peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 3/dt, prominence=0.5)
+            peaks_2, prop_2 = signal.find_peaks(event_ranged, height = baseline, distance = 3/dt, prominence=0.5)
             index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
             outliers = np.where(diff(peaks)>8000)[0]
-            if sum(outliers<index_peak_max) > 0: peaks = peaks[outliers[-1]+1:]
+            if sum(outliers<index_peak_max) > 0: peaks = peaks[outliers[outliers<index_peak_max][-1]+1:]
+            index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
             outliers_2 = np.where(diff(peaks)>8000)[0]
-            if sum(outliers_2>index_peak_max) > 0: peaks = peaks[:outliers_2[0]+1]
+            if sum(outliers_2>=index_peak_max) > 0: peaks = peaks[:outliers_2[0]+1]
             if len(peaks)<2: 
                 del event_props[i+1]
                 continue
@@ -217,7 +218,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         baseline = simulation_dict['Baseline']
         threshold = simulation_dict['Threshold']
         threshold_2sd = simulation_dict['Threshold_2sd']
-        peaks, props = signal.find_peaks(signal_event, height = threshold_2sd, distance = 2/dt, prominence=0.5)
+        peaks, props = signal.find_peaks(signal_event, height = threshold_2sd, distance = 3/dt, prominence=0.5)
 #        peaks, props = signal.find_peaks(signal_event, height = baseline, distance = 4/dt)
 #        index_out = where(props['prominences'] < 1)[0]
         left_bases = props['left_bases']
@@ -229,6 +230,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
 
         
         freq = 1 / (diff(peaks)*dt/1000)   # Divided by 1000 because of ms
+        peak_heights = props['peak_heights']
         indexes_freq = (diff(peaks)/2).astype(int) + peaks[:-1]
         min_dist_peak_tobase_xaxis = asarray(asmatrix(vstack((abs(peaks-left_bases), abs(peaks-right_bases)))).min(0))[0]
         start_cycles = peaks - min_dist_peak_tobase_xaxis
@@ -249,6 +251,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         
         events_dict[event]['Num_peaks'] = len(peaks)
         events_dict[event]['Peaks_indexes'] = peaks
+        events_dict[event]['Peaks_heights'] = peak_heights
         events_dict[event]['Instant_frequency'] = freq
         events_dict[event]['Indices_frequency'] = indexes_freq
         events_dict[event]['Mean_frequency'] = mean(freq)
@@ -257,7 +260,7 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
         events_dict[event]['Long_freq_time_slope'] = long_slope
 
         if plot_peaks_bool:
-            pdf_file_name = f'Net_{name_network}_Event_{i+1}_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_cut'
+            pdf_file_name = f'Net_{name_network}_Event_{event}_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_cut'
             with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
                 fig = figure(figsize=(10/cm, 10/cm))
     
@@ -276,30 +279,30 @@ def prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=Fals
                 
     return events_dict, simulation_dict
 
-
-def plot_all_simulation(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd):
-    '''
-    Plot simulation over time with peak detection
-    '''
-    events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
-    
-    time = simulation_dict['Total_time']
-    rate_signal = simulation_dict['Total_signal']
-    index_peaks = simulation_dict['Max_peak_index']
-    baseline = simulation_dict['Baseline']
-    
-    pdf_file_name = f'All_simulation_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_{name_network}'
-    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig = figure(figsize=(10/cm, 10/cm))
-        plot(time, rate_signal, c='k')
-        scatter(index_peaks*dt, rate_signal[index_peaks], c='r')
-    #    axhline(y=thr, c='gray', linestyle='--', label='Peak threshold')
-        axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
-        legend()
-        gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(0,max(time)))
-        
-        savefig(path_to_save_figures + pdf_file_name +'.png')
-        pdf.savefig(fig)
+# MIGHT NOT BE USED ----------------------------------------------start------------------------------------------
+#def plot_all_simulation(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd):
+#    '''
+#    Plot simulation over time with peak detection
+#    '''
+#    events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool=False)
+#    
+#    time = simulation_dict['Total_time']
+#    rate_signal = simulation_dict['Total_signal']
+#    index_peaks = simulation_dict['Max_peak_index']
+#    baseline = simulation_dict['Baseline']
+#    
+#    pdf_file_name = f'All_simulation_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_{name_network}'
+#    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+#        fig = figure(figsize=(10/cm, 10/cm))
+#        plot(time, rate_signal, c='k')
+#        scatter(index_peaks*dt, rate_signal[index_peaks], c='r')
+#    #    axhline(y=thr, c='gray', linestyle='--', label='Peak threshold')
+#        axhline(y=baseline, c='gray', linestyle='dotted', label='Baseline')
+#        legend()
+#        gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(0,max(time)))
+#        
+#        savefig(path_to_save_figures + pdf_file_name +'.png')
+#        pdf.savefig(fig)
 
 def plot_all_events_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd):
     '''
@@ -364,84 +367,85 @@ def get_index_neurons_from_window_of_time(monitor, time_1, time_2):
     
     
     
+# MIGHT NOT BE USED ----------------------------------------------start------------------------------------------
 
-def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd, plot_peaks_bool=False):
-    
-    '''
-    With the dictionary of all events (few ripples per event). 
-    In this function we check what about the spikes in each ripple oscillation
-    '''
-#    pop_spikes_monitor = M_E
-#    pop_event_monitor = M_DS    
-    pdf_file_name = f'Spiking_properties_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
-    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
-        total_events = len(events_dict.keys())
-        fig = figure(figsize=(18/cm,23.7/cm))
-        gs0 = gridspec.GridSpec(len(events_dict.keys()), 2, figure=fig, wspace=0.5/cm, hspace=0.2/cm)
-
-        for i, event in enumerate(events_dict.keys()):
-            start_time = events_dict[event]['Index_start']*dt
-            end_time = events_dict[event]['Index_end']*dt
-            neurons_spike, isi_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time, end_time)
-            neurons_DS, isi_DS = get_index_neurons_from_window_of_time(pop_event_monitor, start_time, end_time)
-    #        neurons_no_event_spike, isi_noSWR_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time-100, end_time-100)
-    #        neurons_no_event_DS, isi_noSWR_DS_spikes = get_index_neurons_from_window_of_time(pop_event_monitor, start_time-100, end_time-100)
-            list_neurons = []
-            spikes_per_neuron = []
-            for neuron in neurons_spike.keys():
-                list_neurons.append(neuron)
-                spikes_per_neuron.append(len(neurons_spike[neuron]))
-            gssub = gs0[i,0].subgridspec(1, 2)
-            plt.suptitle("GridSpec Inside GridSpec")
-            ax_hist = fig.add_subplot(gssub[0])
-            ax_isi = fig.add_subplot(gssub[1])
-            ax_hist.bar(list_neurons, spikes_per_neuron, color='k')
-            ax_isi.hist(isi_spikes*1000, color='k', range = (0,50))
-            ax_hist.set(xlim=(0,900))
-            ax_hist.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax_isi.set(xlim=(0,50))
-            ax_isi.yaxis.tick_right()
-            ax_isi.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax_isi.text(x=25,y=ax_isi.get_ylim()[1]*0.8, s=f'CV= {np.round(np.var(isi_spikes*1000) / np.mean(isi_spikes*1000),2)}')
-            if i<total_events-1: 
-                ax_hist.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                ax_isi.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-            else:
-                ax_hist.set(xlabel='Neuron index')
-                ax_isi.set(xlabel='ISI at event [ms]')
-            if i==0:
-                ax_hist.set(title='Spikes/neuron')
-                ax_isi.set(title='ISI distribution')            
-                
-            list_neurons_DS = []
-            spikes_per_neuron_DS = []
-            for neuron in neurons_DS.keys():
-                list_neurons_DS.append(neuron)
-                spikes_per_neuron_DS.append(len(neurons_DS[neuron]))
-            gssub = gs0[i,1].subgridspec(1, 2)
-            ax_hist = fig.add_subplot(gssub[0])
-            ax_isi = fig.add_subplot(gssub[1])
-            ax_hist.bar(list_neurons_DS, spikes_per_neuron_DS, color='k')
-            ax_isi.hist(isi_DS*1000, color='k', range = (0,50))        
-            ax_hist.set(xlim=(0,900))
-            ax_hist.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax_isi.set(xlim=(0,50))
-            ax_isi.yaxis.tick_right()
-            ax_isi.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax_isi.text(x=25,y=ax_isi.get_ylim()[1]*0.8, s=f'CV= {np.round(np.var(isi_DS*1000) / np.mean(isi_DS*1000),2)}')
-            if i<total_events-1: 
-                ax_hist.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                ax_isi.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-            else:
-                ax_hist.set(xlabel='Neuron index')
-                ax_isi.set(xlabel='ISI at event [ms]')
-            if i==0:
-                ax_hist.set(title='Spikes/neuron')
-                ax_isi.set(title='ISI distribution')  
-                
-        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
-        pdf.savefig(fig)
+#def ripple_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event_monitor, threshold_in_sd, plot_peaks_bool=False):
+#    
+#    '''
+#    With the dictionary of all events (few ripples per event). 
+#    In this function we check what about the spikes in each ripple oscillation
+#    '''
+##    pop_spikes_monitor = M_E
+##    pop_event_monitor = M_DS    
+#    pdf_file_name = f'Spiking_properties_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+#    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+#        events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
+#        total_events = len(events_dict.keys())
+#        fig = figure(figsize=(18/cm,23.7/cm))
+#        gs0 = gridspec.GridSpec(len(events_dict.keys()), 2, figure=fig, wspace=0.5/cm, hspace=0.2/cm)
+#
+#        for i, event in enumerate(events_dict.keys()):
+#            start_time = events_dict[event]['Index_start']*dt
+#            end_time = events_dict[event]['Index_end']*dt
+#            neurons_spike, isi_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time, end_time)
+#            neurons_DS, isi_DS = get_index_neurons_from_window_of_time(pop_event_monitor, start_time, end_time)
+#    #        neurons_no_event_spike, isi_noSWR_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time-100, end_time-100)
+#    #        neurons_no_event_DS, isi_noSWR_DS_spikes = get_index_neurons_from_window_of_time(pop_event_monitor, start_time-100, end_time-100)
+#            list_neurons = []
+#            spikes_per_neuron = []
+#            for neuron in neurons_spike.keys():
+#                list_neurons.append(neuron)
+#                spikes_per_neuron.append(len(neurons_spike[neuron]))
+#            gssub = gs0[i,0].subgridspec(1, 2)
+#            plt.suptitle("GridSpec Inside GridSpec")
+#            ax_hist = fig.add_subplot(gssub[0])
+#            ax_isi = fig.add_subplot(gssub[1])
+#            ax_hist.bar(list_neurons, spikes_per_neuron, color='k')
+#            ax_isi.hist(isi_spikes*1000, color='k', range = (0,50))
+#            ax_hist.set(xlim=(0,900))
+#            ax_hist.yaxis.set_major_locator(MaxNLocator(integer=True))
+#            ax_isi.set(xlim=(0,50))
+#            ax_isi.yaxis.tick_right()
+#            ax_isi.yaxis.set_major_locator(MaxNLocator(integer=True))
+#            ax_isi.text(x=25,y=ax_isi.get_ylim()[1]*0.8, s=f'CV= {np.round(np.var(isi_spikes*1000) / np.mean(isi_spikes*1000),2)}')
+#            if i<total_events-1: 
+#                ax_hist.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+#                ax_isi.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+#            else:
+#                ax_hist.set(xlabel='Neuron index')
+#                ax_isi.set(xlabel='ISI at event [ms]')
+#            if i==0:
+#                ax_hist.set(title='Spikes/neuron')
+#                ax_isi.set(title='ISI distribution')            
+#                
+#            list_neurons_DS = []
+#            spikes_per_neuron_DS = []
+#            for neuron in neurons_DS.keys():
+#                list_neurons_DS.append(neuron)
+#                spikes_per_neuron_DS.append(len(neurons_DS[neuron]))
+#            gssub = gs0[i,1].subgridspec(1, 2)
+#            ax_hist = fig.add_subplot(gssub[0])
+#            ax_isi = fig.add_subplot(gssub[1])
+#            ax_hist.bar(list_neurons_DS, spikes_per_neuron_DS, color='k')
+#            ax_isi.hist(isi_DS*1000, color='k', range = (0,50))        
+#            ax_hist.set(xlim=(0,900))
+#            ax_hist.yaxis.set_major_locator(MaxNLocator(integer=True))
+#            ax_isi.set(xlim=(0,50))
+#            ax_isi.yaxis.tick_right()
+#            ax_isi.yaxis.set_major_locator(MaxNLocator(integer=True))
+#            ax_isi.text(x=25,y=ax_isi.get_ylim()[1]*0.8, s=f'CV= {np.round(np.var(isi_DS*1000) / np.mean(isi_DS*1000),2)}')
+#            if i<total_events-1: 
+#                ax_hist.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+#                ax_isi.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+#            else:
+#                ax_hist.set(xlabel='Neuron index')
+#                ax_isi.set(xlabel='ISI at event [ms]')
+#            if i==0:
+#                ax_hist.set(title='Spikes/neuron')
+#                ax_isi.set(title='ISI distribution')  
+#                
+#        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+#        pdf.savefig(fig)
 
 def plot_stored_networks_full_simulation():
     '''
@@ -484,36 +488,48 @@ def plot_scatter_spikes(n_group, pop_rate_monitor, pop_spikes_monitor, pop_event
     events_dict, simulation_dict = prop_events(n_group, pop_rate_monitor, threshold_in_sd, plot_peaks_bool)
     total_events = len(events_dict.keys())
     colors = cmr.take_cmap_colors('viridis', total_events, return_fmt='hex') 
-
-    pdf_file_name = f'Spiking_relation_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_Net_{name_network[-1]}'
+    num_neurons = len(n_group.i)
+    array_all_spikes_allevents = np.zeros((2,2))
+    pdf_file_name = f'Spiking_relation_AVERAGED_events_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_Net_{name_network[-1]}'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        fig, ax = subplots(total_events, 1, figsize=(18/cm,23.7/cm), sharex=True, sharey=True)
+        fig, ax = subplots(1, 1, figsize=(18/cm,23.7/cm), sharex=True, sharey=True)
         
-        for i, event in enumerate(events_dict.keys()):
+        for j, event in enumerate(events_dict.keys()):
             start_time = events_dict[event]['Index_start']*dt
             end_time = events_dict[event]['Index_end']*dt
             neurons_spike, isi_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time, end_time)
             neurons_DS, isi_DS = get_index_neurons_from_window_of_time(pop_event_monitor, start_time, end_time)
     #        neurons_no_event_spike, isi_noSWR_spikes = get_index_neurons_from_window_of_time(pop_spikes_monitor, start_time-100, end_time-100)
     #        neurons_no_event_DS, isi_noSWR_DS_spikes = get_index_neurons_from_window_of_time(pop_event_monitor, start_time-100, end_time-100)
-            array_all_spikes= np.zeros((len(n_group.i), 2))
-            for index in n_group.i:
+            array_all_spikes= np.zeros((num_neurons, 2))
+            for index in np.arange(num_neurons):
                 if index in neurons_DS: array_all_spikes[index, 0] = len(neurons_DS[index])
                 else: array_all_spikes[index, 0] = 0
                 if index in neurons_spike: array_all_spikes[index, 1] = len(neurons_spike[index])
                 else: array_all_spikes[index, 1] = 0
-                    
-            points = list(set(zip(array_all_spikes[:,0],array_all_spikes[:,1])))
-            count = [len([x for x,y in zip(array_all_spikes[:,0],array_all_spikes[:,1]) if x==p[0] and y==p[1]]) for p in points]
-            plot_x=[i[0] for i in points]
-            plot_y=[i[1] for i in points]
-            count=np.array(count)
-            pl = ax[i].scatter(plot_x,plot_y,c=count,s=100*count**0.5,cmap='viridis', vmin=0, vmax=250)
-            ax[i].set(ylabel='Number of spikes')
-            ax[i].set_ylim(bottom=-1)
-            plt.colorbar(pl, ax=ax[i])
-        ax[i].set(xlabel='Number of dendritic spikes')
-        fig.suptitle('Spikes per neuron and event')
+            array_all_spikes_allevents = np.append(array_all_spikes_allevents, array_all_spikes, axis=0) 
+            
+        array_all_spikes_allevents = array_all_spikes_allevents[2:,:]
+#        res = stats.linregress(array_all_spikes_allevents[0], array_all_spikes_allevents[1])
+#        x_val = np.arange(25)
+#        y_val = res.slope * x_val + res.intercept 
+        points = list(set(zip(array_all_spikes_allevents[:,0],array_all_spikes_allevents[:,1])))
+        count = [len([x for x,y in zip(array_all_spikes_allevents[:,0],array_all_spikes_allevents[:,1]) if x==p[0] and y==p[1]]) for p in points] 
+        plot_x=[k[0] for k in points]
+        plot_y=[k[1] for k in points]
+        mask_spikes = np.where(np.array(plot_y)>=2)[0]
+#        res2 = stats.linregress(plot_x, plot_y)
+#        y_val = res2.slope * x_val + res2.intercept 
+        print(f'Number of neurons that spike 2 or more times per event {np.sum(count[mask_spikes])}')
+        count=np.array(count)/total_events        
+        mask = np.where(count>0)[0]
+        pl = ax.scatter(np.array(plot_x)[mask],np.array(plot_y)[mask],c=np.log(count[mask]),s=100*count[mask]**0.5,cmap='viridis')
+#        ax.plot(x_val, y_val, color='k')
+        ax.set(ylabel='Number of spikes')
+        ax.set_ylim(bottom=-1)
+        plt.colorbar(pl, ax=ax,label='Log number of neurons per event')
+        ax.set(xlabel='Number of dendritic spikes')
+        fig.suptitle('Spikes behavior. Averaged per event.')
 #            ax[i].scatter(array_all_spikes[:,0], array_all_spikes[:,1], color=colors[i])
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)        
@@ -639,7 +655,7 @@ def get_wavelet_information(n_group, pop_rate_monitor, threshold_in_sd):
     return dict_wavelet
 
     
-def discrete_freq_analysis(dict_information, wavelet = True):
+def discrete_freq_analysis(dict_information, n_group, wavelet = True):
     '''
     Function to plot and analyse the instantaneous frequency
     dict_information could come from wavelet or from simple period discrete frequency analysis
@@ -670,10 +686,6 @@ def discrete_freq_analysis(dict_information, wavelet = True):
                 intercept = res.intercept
                 regression_values = time_values * slope + intercept
                 
-            
-            
-            
-            
             ax.grid(zorder= 0)
             ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.', label=f'Event {event}')
             if wavelet: ax.plot(time_values-max_peak_time, regression_values, color=colors[i], linestyle='-')
@@ -733,6 +745,53 @@ def plot_all_discrete_frequencies(dict_information, n_group, wavelet=True, short
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
+def get_and_plot_correlation_freq_rates_height(dict_information, n_group, previous = False, threshold_in_sd=3):
+    '''Function to plot the correlation between calculater frequencies and the height of the peak (previous or posterior)
+    to the 1/period calculated.
+    dict information is e.g. events_dict, simulation_dict = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
+    '''
+    num_events = len(dict_information.keys())
+    colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
+    heights = np.array([])
+    frequencies = np.array([])
+    times = np.array([])
+    if previous: pdf_file_name = f'Scatter_frequency_previous_ratepeaks_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    else: pdf_file_name = f'Scatter_frequency_posterior_ratepeaks_G_{n_group.name[-2].upper()}_th_{threshold_in_sd}_{name_network}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(15/cm, 15/cm))
+        for i, event in enumerate(dict_information.keys()):
+            frequencies_discrete = dict_information[event]['Instant_frequency']
+            time_values = dict_information[event]['Time_array']
+            time_discrete = time_values[dict_information[event]['Indices_frequency']]
+
+            if previous: heights_discrete = dict_information[event]['Peaks_heights'][:-1]
+            else: heights_discrete = dict_information[event]['Peaks_heights'][1:]
+
+            heights = np.append(heights, heights_discrete)
+            frequencies = np.append(frequencies, frequencies_discrete)
+            times = np.append(times, time_discrete)
+            if len(np.where(frequencies_discrete>250)[0])>0: print(event)
+#            ax.scatter(frequencies_discrete, heights_discrete, color=colors[i], marker='.')
+        mask_before = np.where(times<0)[0]
+        mask_after = np.where(times>0)[0]
+        ax.scatter(frequencies[mask_before], heights[mask_before], color='indigo', label='Peaks before max', marker='.')  
+        ax.scatter(frequencies[mask_after], heights[mask_after], color='green', label='Peaks after max', marker='.') 
+        ylim_val = ax.get_ylim()
+        ax.axvline(x=np.mean(frequencies[mask_before]), color='indigo', linestyle='--')
+        ax.axvline(x=np.mean(frequencies[mask_after]), color='green', linestyle='--')
+#        mask = np.where(frequencies<250)[0]
+        regression = stats.linregress(frequencies, heights)
+        f = np.arange(min(frequencies), max(frequencies), 0.1)
+        y = regression.slope*f +regression.intercept
+        ax.plot(f,y, 'k')
+        ax.legend()
+        ax.grid(zorder= 0)
+        ax.set(xlabel='Frequency of ripple event [Hz]', ylabel='Population rates [kHz]')
+        fig.text(0.5, 0.75, f'Correlation coefficient = {np.round(regression.rvalue,4)}') 
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)     
+    
+    
 
 def plot_histogram_slopes(dict_information, n_group, short_event=True):
     '''
