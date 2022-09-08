@@ -171,7 +171,7 @@ def define_event(n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.5, bas
             time_event = (np.arange(0, len(time_ranged[start_index_event:end_index_event])) -  (peaks[index_peak_max]-start_index_event )) * dt
             event = event_ranged[start_index_event:end_index_event]
             
-            event_props[i+1]['Max_peak_time'] = index*dt
+            event_props[i+1]['Max_peak_time'] = np.round(index*dt,3)
             event_props[i+1]['Time_array'] = time_event
             event_props[i+1]['Signal_array'] = event
             event_props[i+1]['Duration']= len(time_event)*dt
@@ -834,6 +834,38 @@ def get_and_plot_correlation_freq_rates_height(dict_information, n_group, previo
         fig.text(0.5, 0.75, f'Correlation coefficient = {np.round(regression.rvalue,4)}') 
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
+    
+def spikes_per_cycle(dict_information, n_group, pop_spikes_monitor, long_event=False):
+    '''
+    Fucntion to check how many spikes there are per cycle in event
+    '''
+    if long_event: event = 31
+    else: event = 18
+    pdf_file_name = f'Spikes_percell_percycle_G_{n_group.name[-2].upper()}_{name_network}_event_{event}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 2, figsize=(21/cm, 10/cm))
+#        signal_array = dict_information[event]['Signal_array']
+        time_start = dict_information[event]['Index_start'] * dt
+        time_end = dict_information[event]['Index_end'] * dt
+#        time_array = np.round(np.arange(time_start, time_end, 0.001),3)[:-1]
+        spikes_times = pop_spikes_monitor.t/ms
+        spikes_index = pop_spikes_monitor.i
+        mask = np.where((spikes_times >=time_start) & (spikes_times <=time_end))[0]
+        spikes_per_cycle = np.round(dict_information[event]['Spikes_per_cycle'],0)
+        unique_index, counts_spikes = np.unique(spikes_index[mask], return_counts=True)
+        
+        ax[0].bar(np.arange(len(spikes_per_cycle))+1, spikes_per_cycle, color='gray')
+        ax[0].set(xlabel='Cycle in event', ylabel='Number of cells spiking')
+        ax[1].hist(counts_spikes, bins=np.arange(0.5,counts_spikes.max()+1, 1), histtype='step', color='k')
+        ax[1].set(xlabel='Number of spikes per cell in whole event', ylabel='Amount of neurons')
+        
+        fig.tight_layout()
+        plt.show()
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)     
+    
+    
+    
     
     
 
