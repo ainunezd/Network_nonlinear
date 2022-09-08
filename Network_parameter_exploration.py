@@ -33,14 +33,14 @@ from Network_model_2_two_populations import Network_model_2
 from Network_ripple_analysis import find_events, define_event, prop_events
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-#path_to_save_figures = '/home/nunez/New_repo/Plots/'
-#path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/nunez/New_repo/Plots/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
-name_network = 'long_random_network_8_tref_ex_1'
+#name_network = 'long_random_network_8_tref_ex_1'
 
 
 # ----------------------------DECREASE of exc-exc delay-------------------------

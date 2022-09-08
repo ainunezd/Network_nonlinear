@@ -346,6 +346,50 @@ def plot_all_events_prop(n_group, pop_rate_monitor, pop_spikes_monitor, pop_even
         
         savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)
+        
+def plot_histograms_overview_statistics(dict_information, n_group, threshold_in_sd=3):
+    '''
+    Function to plot histograms of the overview of all events. 
+    In principle: Duration of event, number of peaks, height of max peak and mean frequency
+    '''
+    num_events = len(dict_information.keys())
+    num_peaks = np.zeros(num_events)
+    peak_max_heights = np.zeros(num_events)
+    durations = np.zeros(num_events)
+    mean_freq = np.zeros(num_events)
+
+    for i, event in enumerate(dict_information.keys()):
+        num_peaks[i] = dict_information[event]['Num_peaks']
+        durations[i] = dict_information[event]['Duration']
+        mean_freq[i] = dict_information[event]['Mean_frequency']
+        peak_max_heights[i] = np.max(dict_information[event]['Peaks_heights'])
+
+    pdf_file_name = f'All_events_histograms_overview_G_{n_group.name[-2].upper()}_tr_{threshold_in_sd}_{name_network}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 4, figsize=(21/cm,10/cm))
+        
+        ax[0].hist(durations, 20, color='k', histtype='step')
+        ax[0].set(xlabel='Duration of event [ms]')
+        ax[0].axvline(x=np.mean(durations), ymin=0, ymax=ax[0].get_ylim()[1], color='gray', linestyle='--')
+        
+        ax[1].hist(num_peaks, 20, color='k', histtype='step')
+        ax[1].set(xlabel='Peaks/event')
+        ax[1].axvline(x=np.mean(num_peaks), ymin=0, ymax=ax[1].get_ylim()[1], color='gray', linestyle='--')
+        
+        ax[2].hist(peak_max_heights, 20, color='k', histtype='step')
+        ax[2].set(xlabel='Maximum peak height [kHz]')
+        ax[2].axvline(x=np.mean(peak_max_heights), ymin=0, ymax=ax[2].get_ylim()[1], color='gray', linestyle='--')
+
+        ax[3].hist(mean_freq, 20, color='k', histtype='step')
+        ax[3].set(xlabel='Mean frequency [Hz]')
+        ax[3].axvline(x=np.mean(mean_freq), ymin=0, ymax=ax[3].get_ylim()[1], color='gray', linestyle='--')
+        
+        fig.tight_layout()
+        plt.show()
+        savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)
+
+    
 
         
 def get_index_neurons_from_window_of_time(monitor, time_1, time_2):
