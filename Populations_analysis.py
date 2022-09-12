@@ -120,6 +120,10 @@ def get_events_ex_in(name_net=name_network):
     
     data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
     data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+    headers = ['Event_id', 'Difference_max_peak_time', 'Time_exc', 'Time_inh', 'Signal_exc', 'Signal_inh', 
+               'Peaktimes_exc', 'Peaktimes_inh',  'Difference_between_peaks', 'Zeropeak_index']
+    events_ex_in = pd.DataFrame(columns = headers)
+    index = 0
     
     max_peaks_ex = np.array(data_ex['Max_peak_time'].values)
     max_peaks_in = np.array(data_in['Max_peak_time'].values)
@@ -135,32 +139,63 @@ def get_events_ex_in(name_net=name_network):
             list_events = np.append(list_events,np.array([[index_ex, array_index_in[indexes_in_in[0]]]]), axis=0)
         else: continue
     
-    events_both = list_events[1:,:]
-    pdf_file_name = f'All_accepted_events_{name_net}'
-    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-        for evs in np.arange(events_both.shape[0]):
-            a,b = events_both[evs,:]
-            print(a,b)
-            diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
-            fig = plt.figure(figsize=(21/cm, 12/cm))
+    events_both = list_events[1:,:]    
+    for evs in np.arange(events_both.shape[0]):
+        a,b = events_both[evs,:]
+        print(a,b)
+        diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
+        if diff_peak_times>4:continue
+        time_exc = data_ex.loc[a]['Time_array']
+        time_inh = data_in.loc[b]['Time_array'] - diff_peak_times
+        signal_exc = data_ex.loc[a]['Signal_array']
+        signal_inh = data_in.loc[b]['Signal_array']
+        peak_times_exc = time_exc[data_ex.loc[a]['Peaks_indexes']]
+        peak_times_inh = time_inh[data_in.loc[b]['Peaks_indexes']]
+        first_peaks_inh = np.where((peak_times_inh - np.min(peak_times_exc))>0)[0]
+        if len(first_peaks_inh)>0: start_time = np.round(peak_times_exc[np.where(peak_times_exc<peak_times_inh[first_peaks_inh[0]])[0][-1]] -1, 3)
+        last_peaks_exc = np.where((peak_times_exc - np.max(peak_times_inh))<0)[0]
+        if len(last_peaks_exc)>0: end_time = np.round(peak_times_inh[np.where(peak_times_inh>peak_times_exc[last_peaks_exc[-1]])[0][0]] +1,3)
+        index_start_exc, index_end_exc = np.where(time_exc>=start_time)[0][0], np.where(time_exc<=end_time)[0][-1]
+        index_start_inh, index_end_inh = np.where(time_inh>=start_time)[0][0], np.where(time_inh<=end_time)[0][-1]
+        min_time, max_time = time_exc[index_start_exc], time_inh[index_end_inh]
+        time_exc, signal_exc = time_exc[index_start_exc:index_end_exc], signal_exc[index_start_exc:index_end_exc]
+        time_inh, signal_inh = time_inh[index_start_inh:index_end_inh], signal_inh[index_start_inh:index_end_inh]
+        peak_times_exc = peak_times_exc[np.where((peak_times_exc>min_time) & (peak_times_exc<max_time))[0]]
+        peak_times_inh = peak_times_inh[np.where((peak_times_inh>min_time) & (peak_times_inh<max_time))[0]]
+        zero_index = np.where(peak_times_exc ==0)[0]
+        if len(zero_index)>0: zero_peak_index = zero_index[0]
+        else: zero_peak_index = None
+        if (len(peak_times_exc) != len(peak_times_inh)): continue
+        else: events_ex_in.loc[index] = [evs+1, diff_peak_times,time_exc, time_inh, signal_exc, signal_inh, peak_times_exc,
+                              peak_times_inh, peak_times_inh-peak_times_exc, zero_peak_index]
+        index +=1
+
+    events_ex_in.to_csv(path_to_save_figures+f'Properties_populations_events_in_{name_network}.csv')
+    events_ex_in.to_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
+#    pdf_file_name = f'All_accepted_events_{name_net}'
+#    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+#        for evs in np.arange(events_both.shape[0]):
+#            a,b = events_both[evs,:]
+#            print(a,b)
+#            diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
+#            fig = plt.figure(figsize=(21/cm, 12/cm))
+#            
+#            plt.plot(data_ex.loc[a]['Time_array'], data_ex.loc[a]['Signal_array'], color='navy', label='Excitatory')
+#            plt.scatter(data_ex.loc[a]['Time_array'][data_ex.loc[a]['Peaks_indexes']],  data_ex.loc[a]['Signal_array'][data_ex.loc[a]['Peaks_indexes']], color='r')
+#            plt.plot(data_in.loc[b]['Time_array']-diff_peak_times, data_in.loc[b]['Signal_array'], color='gold', label='Inhibitory')
+#            plt.scatter(data_in.loc[b]['Time_array'][data_in.loc[b]['Peaks_indexes']]-diff_peak_times,  data_in.loc[b]['Signal_array'][data_in.loc[b]['Peaks_indexes']], color='r')
+#            plt.gca().set(xlabel='Time w.r.t. maximum excitatory peak', ylabel='Population rates [kHz]', title=f'Events {str(a)} {str(b)}')
+#            plt.legend(loc=1)
+#            plt.show()
+#            pdf.savefig(fig)
+#            plt.close('all')
             
-            plt.plot(data_ex.loc[a]['Time_array'], data_ex.loc[a]['Signal_array'], color='navy', label='Excitatory')
-            plt.scatter(data_ex.loc[a]['Time_array'][data_ex.loc[a]['Peaks_indexes']],  data_ex.loc[a]['Signal_array'][data_ex.loc[a]['Peaks_indexes']], color='r')
-            plt.plot(data_in.loc[b]['Time_array'], data_in.loc[b]['Signal_array'], color='gold', label='Inhibitory')
-            plt.scatter(data_in.loc[b]['Time_array'][data_in.loc[b]['Peaks_indexes']],  data_in.loc[b]['Signal_array'][data_in.loc[b]['Peaks_indexes']], color='r')
-            plt.gca().set(xlabel='Time w.r.t. maximum excitatory peak', ylabel='Population rates [kHz]', title=f'Events {str(a)} {str(b)}')
-            plt.legend(loc=1)
-            plt.show()
-            pdf.savefig(fig)
-            plt.close('all')
             
             
             
             
             
-            
-            
-            
+                       
             
             
             
