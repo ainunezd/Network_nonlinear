@@ -834,6 +834,51 @@ def get_and_plot_correlation_freq_rates_height(dict_information, n_group, previo
         fig.text(0.5, 0.75, f'Correlation coefficient = {np.round(regression.rvalue,4)}') 
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
+        
+# Using the csv dataframes with properties of events--------------------------------------------------------------
+def plot_correlation_per_event( n_group, previous = False):
+    '''Function to plot the correlation per event between calculated periods and the height of the peak (previous or posterior)
+    to the period calculated.
+    '''
+    data_ex = pd.read_pickle('/home/nunez/New_repo/Plots_populations_comparison/'+f'Properties_events_ex_{name_network}.pkl')
+    if previous: pdf_file_name = f'Scatter_frequency_previous_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent'
+    else: pdf_file_name = f'Scatter_frequency_posterior_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:        
+        for evs in data_ex.index:
+            fig, ax = plt.subplots(1, 2, figsize=(21/cm, 12/cm), sharey=True)
+            
+            periods = 1000/data_ex.loc[evs]['Instant_frequency']
+            periods_times = data_ex.loc[evs]['Time_array'][data_ex.loc[evs]['Indices_frequency']]
+            peak_heights = data_ex.loc[evs]['Peaks_heights']
+            
+            mask_before = np.where(periods_times<0)[0]
+            mask_after = np.where(periods_times>0)[0]
+            
+            ax[0].plot(periods_times, periods, marker='*', color='k')
+            ax[0].axvline(x=0, color='gray', linestyle='--')
+            ax[0].set(xlabel='Time w.r.t. max peak [ms]', ylabel='Period [ms]')
+            
+            if previous: peak_heights = peak_heights[:-1]
+            else: peak_heights = peak_heights[1:]
+            
+            if len(mask_before)>0:
+                corr_before = stats.linregress(peak_heights[mask_before], periods[mask_before]).rvalue
+                ax[1].scatter(peak_heights[mask_before], periods[mask_before], color='indigo', label='Peaks before max', marker='.')
+            if len(mask_after)>0:
+                corr_after = stats.linregress(peak_heights[mask_after], periods[mask_after]).rvalue
+                ax[1].scatter(peak_heights[mask_after], periods[mask_after], color='green', label='Peaks after max', marker='.')
+            xlim_, ylim_ = ax[1].get_xlim(), ax[1].get_ylim()
+            if len(mask_before)>0: ax[1].text(np.diff(xlim_)*0.7+xlim_[0],np.diff(ylim_)*0.7+ylim_[0], f'\u03C1 : {np.round(corr_before,4)}', color='indigo' )
+            if len(mask_after)>0:ax[1].text(np.diff(xlim_)*0.7+xlim_[0],np.diff(ylim_)*0.6+ylim_[0], f'\u03C1 : {np.round(corr_after,4)}', color='green' )
+
+            ax[1].legend()
+            ax[1].set(xlabel='Population rate cycle [kHz]')
+
+            pdf.savefig(fig) 
+            plt.close('all')
+            
+#def check_average_shapes
+#-------------------------------------------------------------------------------------------
     
 def spikes_per_cycle(dict_information, n_group, pop_spikes_monitor, long_event=False):
     '''

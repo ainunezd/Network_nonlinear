@@ -120,7 +120,7 @@ def get_events_ex_in(name_net=name_network):
     
     data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
     data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
-    headers = ['Event_id', 'Difference_max_peak_time', 'Time_exc', 'Time_inh', 'Signal_exc', 'Signal_inh', 
+    headers = ['Event_id', 'Event_ex', 'Event_in','Difference_max_peak_time', 'Time_exc', 'Time_inh', 'Signal_exc', 'Signal_inh', 
                'Peaktimes_exc', 'Peaktimes_inh',  'Difference_between_peaks', 'Zeropeak_index']
     events_ex_in = pd.DataFrame(columns = headers)
     index = 0
@@ -144,7 +144,7 @@ def get_events_ex_in(name_net=name_network):
         a,b = events_both[evs,:]
         print(a,b)
         diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
-        if diff_peak_times>4:continue
+        if diff_peak_times>10:continue
         time_exc = data_ex.loc[a]['Time_array']
         time_inh = data_in.loc[b]['Time_array'] - diff_peak_times
         signal_exc = data_ex.loc[a]['Signal_array']
@@ -166,29 +166,82 @@ def get_events_ex_in(name_net=name_network):
         if len(zero_index)>0: zero_peak_index = zero_index[0]
         else: zero_peak_index = None
         if (len(peak_times_exc) != len(peak_times_inh)): continue
-        else: events_ex_in.loc[index] = [evs+1, diff_peak_times,time_exc, time_inh, signal_exc, signal_inh, peak_times_exc,
+        else: events_ex_in.loc[index] = [evs+1,a,b, diff_peak_times,time_exc, time_inh, signal_exc, signal_inh, peak_times_exc,
                               peak_times_inh, peak_times_inh-peak_times_exc, zero_peak_index]
         index +=1
 
     events_ex_in.to_csv(path_to_save_figures+f'Properties_populations_events_in_{name_network}.csv')
     events_ex_in.to_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
-#    pdf_file_name = f'All_accepted_events_{name_net}'
-#    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
-#        for evs in np.arange(events_both.shape[0]):
-#            a,b = events_both[evs,:]
-#            print(a,b)
-#            diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
-#            fig = plt.figure(figsize=(21/cm, 12/cm))
-#            
-#            plt.plot(data_ex.loc[a]['Time_array'], data_ex.loc[a]['Signal_array'], color='navy', label='Excitatory')
-#            plt.scatter(data_ex.loc[a]['Time_array'][data_ex.loc[a]['Peaks_indexes']],  data_ex.loc[a]['Signal_array'][data_ex.loc[a]['Peaks_indexes']], color='r')
-#            plt.plot(data_in.loc[b]['Time_array']-diff_peak_times, data_in.loc[b]['Signal_array'], color='gold', label='Inhibitory')
-#            plt.scatter(data_in.loc[b]['Time_array'][data_in.loc[b]['Peaks_indexes']]-diff_peak_times,  data_in.loc[b]['Signal_array'][data_in.loc[b]['Peaks_indexes']], color='r')
-#            plt.gca().set(xlabel='Time w.r.t. maximum excitatory peak', ylabel='Population rates [kHz]', title=f'Events {str(a)} {str(b)}')
-#            plt.legend(loc=1)
-#            plt.show()
-#            pdf.savefig(fig)
-#            plt.close('all')
+
+
+
+def check_average_shapes_both_pop(name_net=name_network):
+    '''
+    Function to corrobotare figure S5 B from Memmesheimmer supplementary material
+    '''
+    long_bad_events = [1,6,11,23,31,34, 4,10,12,13,14,21,30,38,39,43,46]
+    events_ex_in = pd.read_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
+    mask = np.in1d(events_ex_in['Event_ex'].values, long_bad_events)
+    events_index = events_ex_in['Event_ex'].index[~mask]
+
+    pdf_file_name = f'Population_rates_averages_only_shortEvents_{name_net}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1,1, figsize=(21/cm, 14/cm))
+        for evs in events_index:
+            time = events_ex_in.loc[evs]['Time_exc']
+            signal_exc = events_ex_in.loc[evs]['Signal_inh']
+            signal_inh = events_ex_in.loc[evs]['Signal_inh']
+#        ax.
+        
+        ax[0].plot(time, rate_signal_ex, c='navy', label='Excitatory population')
+        ax[0].scatter(time[0] + peaks_ex*dt, rate_signal_ex[peaks_ex], c='r')
+        ax[0].axhline(y=thr_ex, c='gray', linestyle='--')
+        ax[0].legend(loc=1)
+        ax[0].set(ylabel='Rates [kHz]', xlim=(min(time),max(time)))        
+        ax[1].plot(time, rate_signal_in, c='gold', label='Inhibitory population')
+        ax[1].axhline(y=thr_in, c='gray', linestyle='--')
+        ax[1].scatter(time[0] + peaks_in*dt, rate_signal_in[peaks_in], c='r')
+        ax[1].legend(loc=1)
+        ax[1].set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
+        savefig(path_to_save_figures + pdf_file_name +'.png')
+#        savefig(path_to_save_figures + pdf_file_name +'.eps')
+        pdf.savefig(fig)
+
+
+    
+    
+def plot_all_accepted_events(name_net=name_network):
+    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+    data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+    events_ex_in = pd.read_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
+    
+    events_ex = events_ex_in['Event_ex'].values
+    events_in = events_ex_in['Event_in'].values
+    event_array = np.vstack((events_ex, events_in)).T
+    pdf_file_name = f'All_accepted_events_{name_net}_2'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        for x in np.arange(event_array.shape[0]):
+            a,b = event_array[x,:]
+            fig = plt.figure(figsize=(21/cm, 12/cm))
+            diff_peak_times = np.round(data_ex.loc[a]['Max_peak_time'] - data_in.loc[b]['Max_peak_time'], 3)
+            time_exc = data_ex.loc[a]['Time_array']
+            time_inh = data_in.loc[b]['Time_array'] - diff_peak_times
+            signal_exc =  data_ex.loc[a]['Signal_array']
+            signal_inh =  data_in.loc[b]['Signal_array']
+            peak_times_exc = time_exc[data_ex.loc[a]['Peaks_indexes']]
+            peak_heights_exc = data_ex.loc[a]['Peaks_heights']
+            peak_times_inh = time_inh[data_in.loc[b]['Peaks_indexes']]
+            peak_heights_inh = data_in.loc[b]['Peaks_heights']  
+            
+            plt.plot(time_exc, signal_exc, color='navy', label='Excitatory')
+            plt.scatter(peak_times_exc,  peak_heights_exc, color='r')
+            plt.plot(time_inh, signal_inh, color='gold', label='Inhibitory')
+            plt.scatter(peak_times_inh,  peak_heights_inh, color='r')
+            plt.gca().set(xlabel='Time w.r.t. maximum excitatory peak', ylabel='Population rates [kHz]', title=f'Events {str(a)} {str(b)}')
+            plt.legend(loc=1)
+            plt.show()
+            pdf.savefig(fig)
+            plt.close('all')
             
             
             
