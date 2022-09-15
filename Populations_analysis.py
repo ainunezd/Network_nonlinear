@@ -77,15 +77,15 @@ dt = 0.001
 cm = 2.54
 
 
-events_dict_ex, simulation_dict_ex = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
-df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
-df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
-df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
-
-events_dict_in, simulation_dict_in = prop_events(G_I, R_I, 3, plot_peaks_bool=False)
-df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
-df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
-df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+#events_dict_ex, simulation_dict_ex = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
+#df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
+#df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
+#df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+#
+#events_dict_in, simulation_dict_in = prop_events(G_I, R_I, 3, plot_peaks_bool=False)
+#df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
+#df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
+#df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
 
 
 def plot_both_population_rates(threshold_in_sd=3, name_net=name_network, smoothing = 0.5, baseline_start=0, baseline_end=400, dt=dt):
@@ -188,23 +188,16 @@ def check_average_shapes_both_pop(name_net=name_network):
     with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
         fig, ax = plt.subplots(1,1, figsize=(21/cm, 14/cm))
         for evs in events_index:
-            time = events_ex_in.loc[evs]['Time_exc']
-            signal_exc = events_ex_in.loc[evs]['Signal_inh']
+            time_exc = events_ex_in.loc[evs]['Time_exc']
+            time_inh = events_ex_in.loc[evs]['Time_inh']
+            signal_exc = events_ex_in.loc[evs]['Signal_exc']
             signal_inh = events_ex_in.loc[evs]['Signal_inh']
-#        ax.
-        
-        ax[0].plot(time, rate_signal_ex, c='navy', label='Excitatory population')
-        ax[0].scatter(time[0] + peaks_ex*dt, rate_signal_ex[peaks_ex], c='r')
-        ax[0].axhline(y=thr_ex, c='gray', linestyle='--')
-        ax[0].legend(loc=1)
-        ax[0].set(ylabel='Rates [kHz]', xlim=(min(time),max(time)))        
-        ax[1].plot(time, rate_signal_in, c='gold', label='Inhibitory population')
-        ax[1].axhline(y=thr_in, c='gray', linestyle='--')
-        ax[1].scatter(time[0] + peaks_in*dt, rate_signal_in[peaks_in], c='r')
-        ax[1].legend(loc=1)
-        ax[1].set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
+            ax.plot(time_exc, signal_exc, color='navy')
+            ax.plot(time_inh, signal_inh, color='gold')
+            ax.axvline(x=0, c='gray', linestyle='--')
+            ax.set(ylabel='Rates [kHz]',xlabel='Time w.r.t. max peak [ms]')        
+
         savefig(path_to_save_figures + pdf_file_name +'.png')
-#        savefig(path_to_save_figures + pdf_file_name +'.eps')
         pdf.savefig(fig)
 
 

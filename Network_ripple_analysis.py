@@ -840,11 +840,16 @@ def plot_correlation_per_event( n_group, previous = False):
     '''Function to plot the correlation per event between calculated periods and the height of the peak (previous or posterior)
     to the period calculated.
     '''
+    long_bad_events = [1,6,11,23,31,34, 4,10,12,13,14,21,30,38,39,43,46]
+
     data_ex = pd.read_pickle('/home/nunez/New_repo/Plots_populations_comparison/'+f'Properties_events_ex_{name_network}.pkl')
-    if previous: pdf_file_name = f'Scatter_frequency_previous_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent'
-    else: pdf_file_name = f'Scatter_frequency_posterior_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent'
+    mask = np.in1d(data_ex.index, long_bad_events)
+    events_index = data_ex.index[~mask]
+
+    if previous: pdf_file_name = f'Scatter_frequency_previous_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent_onlyshortEvents'
+    else: pdf_file_name = f'Scatter_frequency_posterior_ratepeaks_G_{n_group.name[-2].upper()}_{name_network}_perEvent_onlyshortEvents'
     with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:        
-        for evs in data_ex.index:
+        for evs in events_index:
             fig, ax = plt.subplots(1, 2, figsize=(21/cm, 12/cm), sharey=True)
             
             periods = 1000/data_ex.loc[evs]['Instant_frequency']
