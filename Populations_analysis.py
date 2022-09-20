@@ -39,11 +39,11 @@ from Network_ripple_analysis import find_events, prop_events
 
 # ----------------------------names and folders-------------------------
 
-path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-#path_to_save_figures = '/home/nunez/New_repo/Plots_populations_comparison/'
-#path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/nunez/New_repo/Plots_populations_comparison/'
+path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
@@ -77,15 +77,15 @@ dt = 0.001
 cm = 2.54
 
 
-events_dict_ex, simulation_dict_ex = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
-df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
-df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
-df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
-
-events_dict_in, simulation_dict_in = prop_events(G_I, R_I, 3, plot_peaks_bool=False)
-df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
-df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
-df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+#events_dict_ex, simulation_dict_ex = prop_events(n_group=G_E, pop_rate_monitor=R_E, pop_spikes_monitor=M_E, pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
+#df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
+#df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
+#df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+#
+#events_dict_in, simulation_dict_in = prop_events(n_group=G_I, pop_rate_monitor=R_I, pop_spikes_monitor=M_I, pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
+#df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
+#df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
+#df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
 
 
 def plot_both_population_rates(threshold_in_sd=3, name_net=name_network, smoothing = 0.5, baseline_start=0, baseline_end=400, dt=dt):
@@ -116,11 +116,11 @@ def plot_both_population_rates(threshold_in_sd=3, name_net=name_network, smoothi
         pdf.savefig(fig)
 
 
-def get_events_ex_in(name_net=name_network):
+def get_events_ex_in(name_net):
     
-    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
-    data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
-    headers = ['Event_id', 'Event_ex', 'Event_in','Difference_max_peak_time', 'Time_exc', 'Time_inh', 'Signal_exc', 'Signal_inh', 
+    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_net}.pkl')
+    data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_net}.pkl')
+    headers = ['Name_network', 'Event_id', 'Event_ex', 'Event_in','Difference_max_peak_time', 'Time_exc', 'Time_inh', 'Signal_exc', 'Signal_inh', 
                'Peaktimes_exc', 'Peaktimes_inh',  'Difference_between_peaks', 'Zeropeak_index']
     events_ex_in = pd.DataFrame(columns = headers)
     index = 0
@@ -166,12 +166,13 @@ def get_events_ex_in(name_net=name_network):
         if len(zero_index)>0: zero_peak_index = zero_index[0]
         else: zero_peak_index = None
         if (len(peak_times_exc) != len(peak_times_inh)): continue
-        else: events_ex_in.loc[index] = [evs+1,a,b, diff_peak_times,time_exc, time_inh, signal_exc, signal_inh, peak_times_exc,
+        else: events_ex_in.loc[index] = [name_net, evs+1,a,b, diff_peak_times,time_exc, time_inh, signal_exc, signal_inh, peak_times_exc,
                               peak_times_inh, peak_times_inh-peak_times_exc, zero_peak_index]
         index +=1
 
-    events_ex_in.to_csv(path_to_save_figures+f'Properties_populations_events_in_{name_network}.csv')
-    events_ex_in.to_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
+    events_ex_in.to_csv(path_to_save_figures+f'Properties_populations_events_in_{name_net}.csv')
+    events_ex_in.to_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_net}.pkl')
+    return events_ex_in
 
 
 
@@ -339,41 +340,217 @@ def plot_delays_peaks_desdritic_spikes(name_net=name_network):
         pdf.savefig(fig)            
             
             
+def create_dataframe_all_long_networks():
+    '''
+    Function to define a huge dataframe with several networks
+    
+    '''
+    net_name = 'long_50000_network_' 
+    networks_names = ['2','3','6','7','8']
+    data = []
+    df_all_ex = pd.DataFrame(data)
+    df_all_in = pd.DataFrame(data)
+    df_all_ex_in = pd.DataFrame(data)
+    # For loop for all networks
+    for j, num_net in enumerate(networks_names):
+        name_network = net_name+num_net
+        print(name_network)
+        dur_simulation=10
+        network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+                                            scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
+        network.restore(name='rand_net', filename = path_networks + name_network)
+        M_E = network.sorted_objects[24]
+        M_I = network.sorted_objects[25]
+        M_DS = network.sorted_objects[-16]
+        R_E = network.sorted_objects[-1]
+        R_I = network.sorted_objects[-2]  
+        State_G_ex = network.sorted_objects[2]
+        State_G_in = network.sorted_objects[3]
+        G_E = network.sorted_objects[0]
+        G_I = network.sorted_objects[1]
+        #
+        dt = 0.001
+        cm = 2.54
+
+
+        events_dict_ex, simulation_dict_ex = prop_events(net_name_aux=name_network, n_group=G_E, pop_rate_monitor=R_E, pop_spikes_monitor=M_E, 
+                                                         pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
+        df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
+        df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
+        df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+        
+        events_dict_in, simulation_dict_in = prop_events(net_name_aux=name_network, n_group=G_I, pop_rate_monitor=R_I, pop_spikes_monitor=M_I, 
+                                                         pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
+        df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
+        df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
+        df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
             
+        events_ex_in = get_events_ex_in(name_net=name_network)    
             
+        df_all_ex = df_all_ex.append(df_ex, ignore_index=True)  
+        df_all_in = df_all_in.append(df_in, ignore_index=True)  
+        df_all_ex_in = df_all_ex_in.append(events_ex_in, ignore_index=True) 
+        
+    df_all_ex.to_csv(path_to_save_figures+f'Properties_exitatory_ALL_events.csv')
+    df_all_ex.to_pickle(path_to_save_figures+f'Properties_exitatory_ALL_events.pkl')
+    df_all_in.to_csv(path_to_save_figures+f'Properties_inhibitory_ALL_events.csv')
+    df_all_in.to_pickle(path_to_save_figures+f'Properties_inhibitory_ALL_events.pkl')        
+    df_all_ex_in.to_csv(path_to_save_figures+f'Properties_ALL_events.csv')
+    df_all_ex_in.to_pickle(path_to_save_figures+f'Properties_ALL_events.pkl')               
             
+def get_spikes_and_dendritic_spikes(dict_spikes, dict_dendritic_spikes, num_neurons=900):
+    '''
+    Function to get the previous dendritic spike to a spike
+    '''
+    dict_prev_ds_spike = {}
+    for n in np.arange(num_neurons):
+        if n in dict_spikes.keys():
+            i_to_delete = []
+
+#            print(n)
+            s, ds = dict_spikes[n]*1000, dict_dendritic_spikes[n]*1000
+            dict_prev_ds_spike[n] = np.zeros((len(s), 2))
+            for i, spike in enumerate(s):
+                mask_sp = np.where(ds<spike)[0]
+                if len(mask_sp)>0:
+                    d_spike = ds[mask_sp[-1]]
+                    dict_prev_ds_spike[n][i,:] = d_spike, spike
+                else: i_to_delete.append(i)
             
+            if len(i_to_delete)>0: dict_prev_ds_spike[n] = np.delete(dict_prev_ds_spike[n], i_to_delete, 0)
+            if len(dict_prev_ds_spike[n])==0: dict_prev_ds_spike.pop(n)
+        
+        else: continue
+    
+    return np.vstack(dict_prev_ds_spike.values())    
+    
+def plot_spikes_vs_tauDSAP():    
+    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_exitatory_ALL_events.pkl')    
+    min_dur, max_dur = [23, 53]   # in ms
+    division_array = np.arange(-max_dur+0.5, max_dur-0.5, 5)
+    pdf_file_name = f'Scatter_someEvents_time_spike_tauDSAP'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:        
+        
+        for ind in np.arange(0,260,20):   # only plot max 12 cases
+            if (data_ex.loc[ind]['Duration']<min_dur) or (data_ex.loc[ind]['Duration']>max_dur): continue
+            else:
+                print(ind)
+                name_network = data_ex.loc[ind]['Name_network']
+                array_ds_s = get_spikes_and_dendritic_spikes(data_ex.loc[ind]['Dict_spike_times_per_neuron'], data_ex.loc[ind]['Dict_dendritic_spike_times_per_neuron'])
+                max_peak_time = data_ex.loc[ind]['Max_peak_time']
+                
+                array_ds_s = array_ds_s -max_peak_time
+                tau_DSAP = np.diff(array_ds_s, axis=1)
+                array_ds_s = np.delete(array_ds_s, np.where(tau_DSAP>2)[0], 0)
+                spikes = array_ds_s[:,1]
+                tau_DSAP = np.diff(array_ds_s, axis=1)
+                
+                start_mask = np.where(division_array<np.min(array_ds_s))[0][-1]
+                end_mask = np.where(division_array>np.max(array_ds_s))[0][0]
+                division = division_array[start_mask:end_mask+1]
+                means_spikes = np.zeros(len(division)-1)
+                means_taus = np.zeros(len(division)-1)
+                for i, start in enumerate(division[:-1]):
+                    end = division[i+1]
+                    mask = np.where((spikes>start)&(spikes<end))[0]
+                    means_spikes[i] = np.mean(spikes[mask])
+                    means_taus[i] = np.mean(tau_DSAP[mask])
+                
+                
+                fig, ax = plt.subplots(1, 1, figsize=(21/cm, 12/cm))
+                
+                ax.scatter(spikes, tau_DSAP, marker='.', color='k')
+                ax.plot(means_spikes, means_taus, marker='*', color='r')
+                ax.set(xlabel='Spike times w.r.t. max peak [ms]', ylabel='t DS,AP [ms]', title=f'Network {name_network[-1]}. Peak time {max_peak_time}')
+                ax.grid()
+                pdf.savefig(fig) 
+                plt.close()    
+
+def plot_all_discrete_frequencies(type_population, plot_type):
+    '''
+    Function to plot and analyse the instantaneous frequency
+    type_population can be:
+        excitatory 
+        inhibitory 
+    and that would determine which dataframe to load.
+    plot_type could be:
+        scatter_all
+        plot_all
+        plot_regression
+        plot_mean_halves
+    '''
+    if type_population == 'excitatory': df = pd.read_pickle(path_to_save_figures+f'Properties_exitatory_ALL_events.pkl')   
+    elif type_population == 'inhibitory': df = pd.read_pickle(path_to_save_figures+f'Properties_inhibitory_ALL_events.pkl')   
+    else: return None
+    min_dur, max_dur = [23, 53]
+    selected_df = df[(df['Duration']<=max_dur) & (df['Duration']>=min_dur)]
+    
+    
+    
+    num_events = len(selected_df)
+    colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
+    times = np.array([])
+    frequencies = np.array([])
+    pdf_file_name = f'Discrete_frequencies_{type_population}_{plot_type}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 10/cm))
+        for i, event in enumerate(selected_df.index):
+            print(event)
+            frequencies_discrete = selected_df.loc[event]['Instant_frequency']
+            time_values = selected_df.loc[event]['Time_array']
+            time_discrete = time_values[selected_df.loc[event]['Indices_frequency']]
+            f_half1 = np.mean(frequencies_discrete[np.where(time_discrete<0)[0]])
+            f_half2 = np.mean(frequencies_discrete[np.where(time_discrete>0)[0]])
+                
+            times = np.append(times, time_discrete)
+            frequencies = np.append(frequencies, frequencies_discrete)
             
-            
-            
-            
-            
-            
-            
-            
+            if plot_type == 'scatter_all': ax.scatter(time_discrete, frequencies_discrete, color=colors[i], marker='.')
+            if plot_type == 'plot_all': ax.plot(time_discrete, frequencies_discrete, color=colors[i], marker='.')
+            if plot_type == 'plot_mean_halves':
+                ax.plot(time_discrete[np.where(time_discrete<0)[0]], np.ones(len(time_discrete[np.where(time_discrete<0)[0]]))*f_half1, color=colors[i])
+                ax.plot(time_discrete[np.where(time_discrete>0)[0]], np.ones(len(time_discrete[np.where(time_discrete>0)[0]]))*f_half2, color=colors[i])
+        print(times)
+        if plot_type == 'plot_regression':     
+            t = np.arange(min(times), max(times), 0.1)
+            model = SVR(kernel='rbf')
+            freq_predict = model.fit(times.reshape(-1, 1),frequencies).predict(t.reshape(-1, 1))
+            regression = stats.linregress(times, frequencies)
+            y = regression.slope*t +regression.intercept
+            ax.plot(t,y, 'k')
+            ax.plot(t, freq_predict, 'gray')
+        
+        rect = plt.Rectangle((min(times), 1/(5.2/1000)), max(times)-min(times), 1/(4.3/1000)-1/(5.2/1000), color='k', alpha=0.2, zorder=-1)
+        ax.add_patch(rect)
+        ax.grid(zorder= 0)
+        ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
+#        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)      
     
     
+import random    
+array_distances = np.zeros(1000000)    
+for i in np.arange(len(array_distances)):
+    a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+    b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+    array_distances[i] = np.linalg.norm(a-b)
     
+plt.figure()
+plt.hist(array_distances, bins=100, density=True) 
+(mu, sigma) = stats.norm.fit(array_distances/300)   
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+#     mu
+#Out[103]: 182.50546181613075
+#     
+#     sigma
+#Out[104]: 86.73284591314486
      
-     
-     
-     
-     
-     
-     
+#distances 
+#mu
+#Out[108]: 0.6083515393871026     
+#sigma
+#Out[109]: 0.28910948637714945
+#     
      
      
      
