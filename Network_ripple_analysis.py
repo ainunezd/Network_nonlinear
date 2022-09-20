@@ -35,18 +35,18 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
-
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+#
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_50000_network_8' #Neurons false
+name_network = 'long_50000_network_2' #Neurons false
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
@@ -789,6 +789,47 @@ def plot_all_discrete_frequencies(dict_information, n_group, wavelet=True, short
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
 
+def plot_all_discrete_frequencies_fromDataframe_selected(n_group, ):
+    '''
+    Function to plot and analyse the instantaneous frequency
+    if short_event is true. Then we only take the frequencies between -20 to 20 ms from the max peak
+    '''
+    if n_group==G_E: data = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+    elif n_group==G_I: data = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+    else: return
+    short_events = [1,3,6,7,9,10,17,22,24,26,28,29,30, 36,37,38,39,40, 43,45,46,47,50,55]
+    num_events = len(short_events)
+    colors = cmr.take_cmap_colors('cividis', num_events, return_fmt='hex') 
+    times = np.array([])
+    frequencies = np.array([])
+    pdf_file_name = f'Discrete_frequencies_SUMMARY_short_events_G_{n_group.name[-2].upper()}_{name_network}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 10/cm))
+        for i, event in enumerate(short_events):
+            frequencies_discrete = data.loc[event]['Instant_frequency']
+            time_values = data.loc[event]['Time_array']
+            time_discrete = time_values[data.loc[event]['Indices_frequency']]
+                
+            times = np.append(times, time_discrete)
+            frequencies = np.append(frequencies, frequencies_discrete)
+
+            ax.plot(time_discrete, frequencies_discrete, color=colors[i], marker='.')
+        t = np.arange(min(times), max(times), 0.1)
+#        model = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
+        model = SVR(kernel='rbf')
+        freq_predict = model.fit(times.reshape(-1, 1),frequencies).predict(t.reshape(-1, 1))
+        regression = stats.linregress(times, frequencies)
+#        t = np.arange(min(times), max(times), 0.1)
+        y = regression.slope*t +regression.intercept
+#        ax.plot(t,y, 'k')
+#        ax.plot(t, freq_predict, 'gray')
+        ax.grid(zorder= 0)
+        ax.set(xlabel='Time w.r.t. highest peak [ms]', ylabel='Frequency [Hz]')
+        fig.text(0.7, 0.75, f'Slope= {np.round(regression.slope,4)} [Hz/ms]') 
+        plt.savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)     
+
+
 def get_and_plot_correlation_freq_rates_height(dict_information, n_group, previous = False, threshold_in_sd=3):
     '''Function to plot the correlation between calculater frequencies and the height of the peak (previous or posterior)
     to the 1/period calculated.
@@ -834,7 +875,73 @@ def get_and_plot_correlation_freq_rates_height(dict_information, n_group, previo
         fig.text(0.5, 0.75, f'Correlation coefficient = {np.round(regression.rvalue,4)}') 
         plt.savefig(path_to_save_figures + pdf_file_name +'.png')
         pdf.savefig(fig)     
+
+def get_spikes_and_dspikes_from_one_event(spikes_monitor=M_E, den_spikes_monitor=M_DS, event_number = 9):
+    '''
+    Function to get the times of dentritic spikes before a spike in only one event. 
+    
+    '''
+    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+    time_max_peak = data_ex.loc[event_number]['Max_peak_time']
+    start_time = np.round(data_ex.loc[event_number]['Time_array'][0] + time_max_peak, 3)
+    end_time = np.round(data_ex.loc[event_number]['Time_array'][-1] + time_max_peak, 3)
+    dict_neuron_spikes, _ = get_index_neurons_from_window_of_time(spikes_monitor, start_time, end_time)
+    dict_neuron_ds_spikes, _ = get_index_neurons_from_window_of_time(den_spikes_monitor, start_time, end_time)
+    
+    dict_prev_ds_spike = {}
+    for n in np.arange(1000):
+        if n in dict_neuron_spikes.keys():
+            i_to_delete = []
+#            print(n)
+            s, ds = dict_neuron_spikes[n]*1000, dict_neuron_ds_spikes[n]*1000
+            dict_prev_ds_spike[n] = np.zeros((len(s), 2))
+            for i, spike in enumerate(s):
+                mask_sp = np.where(ds<spike)[0]
+                if len(mask_sp)>0:
+                    d_spike = ds[mask_sp[-1]]
+                    dict_prev_ds_spike[n][i,:] = d_spike, spike
+                else: i_to_delete.append(i)
+            
+            if len(i_to_delete)>0: dict_prev_ds_spike[n] = np.delete(dict_prev_ds_spike[n], i_to_delete, 0)
+            if len(dict_prev_ds_spike[n])==0: dict_prev_ds_spike.pop(n)
         
+        else: continue
+    
+    return np.vstack(dict_prev_ds_spike.values())
+
+
+def plot_spikes_dendritic_previous(event_num=17):
+    '''
+    Function to plot the times of the spikes and the dendritic spikes 
+    In x axis, time of the spike for one event. In y axis, the difference between dendritic spike and somatic action potential(tau_DS_AP)
+    
+    '''
+    ds_s_spikes = get_spikes_and_dspikes_from_one_event(event_number=event_num)
+    tau_Ds_Ap = np.diff(ds_s_spikes, axis=1)
+    ds_s_spikes = np.delete(ds_s_spikes, np.where(tau_Ds_Ap>2)[0], 0)
+    spikes = ds_s_spikes[:,1]
+    tau_Ds_Ap = np.diff(ds_s_spikes, axis=1)
+
+
+#    array_divisions = np.arange(12465,12510,5)
+    array_divisions = np.arange(19280, 19320,5)
+#    array_divisions = np.arange(14660,14710,5)
+    means_spikes = np.zeros(len(array_divisions)-1)
+    means_taus = np.zeros(len(array_divisions)-1)
+    for i, start in enumerate(array_divisions[:-1]):
+        end = array_divisions[i+1]
+        mask = np.where((spikes>start)&(spikes<end))[0]
+        means_spikes[i] = np.mean(spikes[mask])
+        means_taus[i] = np.mean(tau_Ds_Ap[mask])
+    
+    pdf_file_name = f'Scatter_oneEvent_time_spike_tauDSAP_{name_network}_event_{event_num}'
+    with PdfPages(path_to_save_figures + pdf_file_name + '.pdf') as pdf:        
+        fig, ax = plt.subplots(1, 1, figsize=(21/cm, 12/cm))
+        
+        ax.scatter(spikes, tau_Ds_Ap, marker='.', color='k')
+        ax.plot(means_spikes, means_taus, marker='*', color='r')
+        ax.set(xlabel='Spike times [ms]', ylabel='t DS,AP [ms]')
+        ax.grid()
 # Using the csv dataframes with properties of events--------------------------------------------------------------
 def plot_correlation_per_event( n_group, previous = False):
     '''Function to plot the correlation per event between calculated periods and the height of the peak (previous or posterior)

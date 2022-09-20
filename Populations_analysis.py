@@ -39,18 +39,18 @@ from Network_ripple_analysis import find_events, prop_events
 
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
-path_to_save_figures = '/home/nunez/New_repo/Plots_populations_comparison/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots_populations_comparison/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 
 
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_50000_network_8' #Neurons false
+name_network = 'long_50000_network_2' #Neurons false
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
@@ -77,15 +77,15 @@ dt = 0.001
 cm = 2.54
 
 
-#events_dict_ex, simulation_dict_ex = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
-#df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
-#df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
-#df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
-#
-#events_dict_in, simulation_dict_in = prop_events(G_I, R_I, 3, plot_peaks_bool=False)
-#df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
-#df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
-#df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
+events_dict_ex, simulation_dict_ex = prop_events(G_E, R_E, 3, plot_peaks_bool=False)
+df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
+df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
+df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+
+events_dict_in, simulation_dict_in = prop_events(G_I, R_I, 3, plot_peaks_bool=False)
+df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
+df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
+df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
 
 
 def plot_both_population_rates(threshold_in_sd=3, name_net=name_network, smoothing = 0.5, baseline_start=0, baseline_end=400, dt=dt):
@@ -179,7 +179,8 @@ def check_average_shapes_both_pop(name_net=name_network):
     '''
     Function to corrobotare figure S5 B from Memmesheimmer supplementary material
     '''
-    long_bad_events = [1,6,11,23,31,34, 4,10,12,13,14,21,30,38,39,43,46]
+#    long_bad_events = [1,6,11,23,31,34, 4,10,12,13,14,21,30,38,39,43,46] #network 8
+    long_bad_events = [2,4,8,11,13,14,15,16,18,27,31,32,33,34,35,41,48,49,52,53] #network 2
     events_ex_in = pd.read_pickle(path_to_save_figures+f'Properties_populations_events_in_{name_network}.pkl')
     mask = np.in1d(events_ex_in['Event_ex'].values, long_bad_events)
     events_index = events_ex_in['Event_ex'].index[~mask]
@@ -236,23 +237,106 @@ def plot_all_accepted_events(name_net=name_network):
             pdf.savefig(fig)
             plt.close('all')
             
+def check_dendritic_spikes_populations(name_net=name_network, spikes_monitor=M_E, denspikes_monitor=M_DS,spikes_inh_monitor = M_I, normalized=False):
+    
+    data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+    list_events = [1,3,6,7,9,10,17,22,24,26,28,29,30, 36,37,38,39,40, 43,45,46,47,50,55]
+    delay_times_before_peak = []
+    delay_times_after_peak = []
+    pdf_file_name = f'Some_examples_spikes_dendritic_populations_{name_net}_normalized_{int(normalized)}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        for event_exc in list_events:
+            print(event_exc)
+            start_index = data_ex.loc[event_exc]['Index_start']
+            end_index = data_ex.loc[event_exc]['Index_end']
+            max_peak_time = data_ex.loc[event_exc]['Max_peak_time']
+            kernel = stats.norm.pdf(np.arange(-3,3,dt), loc=0, scale=0.2)
+            time_array = np.round(np.arange(start_index, end_index)*dt,3)
             
+        
+            all_time_spikes = spikes_monitor.t/ms
+            mask_spikes = np.where((all_time_spikes<end_index*dt)&(all_time_spikes>start_index*dt))[0]
+            time_spikes = all_time_spikes[mask_spikes]
+            bin_list = np.round(np.arange(start_index, end_index+1)*dt,3)
             
+            all_time_spikes_ds = denspikes_monitor.t/ms
+            mask_spikes_ds = np.where((all_time_spikes_ds<end_index*dt)&(all_time_spikes_ds>start_index*dt))[0]
+            time_spikes_ds = all_time_spikes_ds[mask_spikes_ds]
+
+            all_time_spikes_in = spikes_inh_monitor.t/ms
+            mask_spikes_in = np.where((all_time_spikes_in<end_index*dt)&(all_time_spikes_in>start_index*dt))[0]
+            time_spikes_in = all_time_spikes_in[mask_spikes_in]
             
+            hist, _ = np.histogram(time_spikes, bins=bin_list)
+            smooth_spike_rate = np.convolve(hist, kernel, mode='same')
+            hist_ds, _ = np.histogram(time_spikes_ds, bins=bin_list)
+            smooth_spike_rate_ds = np.convolve(hist_ds, kernel, mode='same')
+            hist_in, _ = np.histogram(time_spikes_in, bins=bin_list)
+            smooth_spike_rate_in = np.convolve(hist_in, kernel, mode='same')
             
+            fig = plt.figure(figsize=(21/cm, 12/cm))
+            if normalized: 
+                plt.plot(time_array, smooth_spike_rate/max(smooth_spike_rate), color='navy', label='Excitatory spikes')
+                plt.plot(time_array, smooth_spike_rate_ds/max(smooth_spike_rate_ds), color='blue', label='Dendritic spikes')
+                plt.plot(time_array, smooth_spike_rate_in/max(smooth_spike_rate_in), color='gold', label='Inhibitory spikes')
+            else:
+                plt.plot(time_array, smooth_spike_rate, color='navy', label='Excitatory spikes')
+                plt.plot(time_array, smooth_spike_rate_ds, color='blue', label='Dendritic spikes')
+                plt.plot(time_array, smooth_spike_rate_in, color='gold', label='Inhibitory spikes')
+
+            plt.axvline(x=max_peak_time, color='gray', linestyle='--', alpha=0.5)
+            plt.gca().set(xlabel='Time event [ms]', ylabel='Normalized rates', title=f'Event {event_exc}')
+            plt.legend(loc=1)
             
-                       
+            peaks_spikes, _ = signal.find_peaks(smooth_spike_rate, distance=3/dt, prominence=0.5)
+            peaks_spikes_ds, _ = signal.find_peaks(smooth_spike_rate_ds, distance=3/dt, prominence=0.5)
+            if peaks_spikes[0]<2000: 
+                peaks_spikes = peaks_spikes[1:]
+                peaks_spikes_ds = peaks_spikes_ds[1:]
+            start_times_ds = np.zeros(len(peaks_spikes))
+            peak_times = time_array[peaks_spikes]
+            peak_times_ds = time_array[peaks_spikes_ds]
+            for i, peak_index in enumerate(peaks_spikes):
+                start_times_ds[i] = time_array[np.where(hist_ds[peak_index-2000:peak_index]>0)[0][0] + peak_index-2000]
+        
+            x_positions = (np.diff(peak_times)/2)+peak_times[:-1]
+            mask_ba = np.where(x_positions<max_peak_time)[0]
+            mask_after = np.where(x_positions>max_peak_time)[0]
+            distance_between_peak_and_ds_start = start_times_ds[1:] - peak_times[:-1]
+            distance_between_peak_and_ds_peak = peak_times_ds[1:] - peak_times[:-1]
+            for j, d in enumerate(distance_between_peak_and_ds_peak):
+                plt.text(x=x_positions[j], y=0.8, s=f'{np.round(d,3)}')
+            delay_times_before_peak.append(distance_between_peak_and_ds_peak[mask_ba])
+            delay_times_after_peak.append(distance_between_peak_and_ds_peak[mask_after])
+            pdf.savefig(fig)
+            plt.close('all')
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+    return delay_times_before_peak, delay_times_after_peak        
+    
+
+def plot_delays_peaks_desdritic_spikes(name_net=name_network):
+
+    delays_before, delays_after = check_dendritic_spikes_populations(normalized=True)
+    
+    delays_before, delays_after = np.hstack(delays_before), np.hstack(delays_after)
+    bin_list = np.arange(4,6, 0.02)
+    pdf_file_name = f'Delay_distribution_between_spiking_and_dendritic_spiking_{name_net}'
+    with PdfPages( path_to_save_figures + pdf_file_name + '.pdf') as pdf:
+        fig = plt.figure(figsize=(21/cm, 12/cm))
+        plt.hist(delays_before, bins=bin_list, histtype='step', color='indigo', label='Before max peak')
+        plt.hist(delays_after, bins=bin_list, histtype='step', color='green', label='After max peak')
+        plt.gca().set(xlabel='Time between population spikes and next dendritic population spikes [ms]')
+        plt.legend(loc=1)
+    
+        plt.axvline(x = np.mean(delays_before), color='indigo', alpha=0.5, linestyle='--')
+        plt.axvline(x = np.mean(delays_after), color='green', alpha=0.5, linestyle='--')
+        plt.axvline(x = np.median(delays_before), color='indigo', alpha=0.5, linestyle='dotted')
+        plt.axvline(x = np.median(delays_after), color='green', alpha=0.5, linestyle='dotted')         
+        p_val = stats.ttest_ind(delays_before, delays_after, equal_var=False).pvalue
+        print(f'p value is {p_val}')
+                
+        savefig(path_to_save_figures + pdf_file_name +'.png')
+        pdf.savefig(fig)            
             
             
             
