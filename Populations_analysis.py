@@ -617,18 +617,18 @@ def plot_correlation_freq_rateHeights(type_population, parameter, value_rates, s
     
 
 #    
-#import random    
-#array_distances = np.zeros(1000000)    
-#for i in np.arange(len(array_distances)):
-#    a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
-#    b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
-#    array_distances[i] = np.linalg.norm(a-b)
-#    
-#plt.figure()
-#plt.hist(array_distances/300, bins=100, density=True, histtype='step') 
-#(mu, sigma) = stats.norm.fit(array_distances/300)   
-#array_normal = clip(np.random.normal(loc=mu, scale=sigma, size=1000000), 0, Inf)
-#plt.hist(array_normal, bins=100, density=True, histtype='step') 
+import random    
+array_distances = np.zeros(1000000)    
+for i in np.arange(len(array_distances)):
+    a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+    b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+    array_distances[i] = np.linalg.norm(a-b)
+    
+plt.figure()
+plt.hist(array_distances/300, bins=100, density=True, histtype='step') 
+(mu, sigma) = stats.norm.fit(array_distances/300)   
+array_normal = clip(np.random.normal(loc=mu, scale=sigma, size=1000000), 0, Inf)
+plt.hist(array_normal, bins=100, density=True, histtype='step') 
 #     mu
 #Out[103]: 182.50546181613075
 #     

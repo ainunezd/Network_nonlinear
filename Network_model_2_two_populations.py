@@ -22,6 +22,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from brian2 import *
 from brian2 import ms, mV
+import random    
+ 
+
 
 def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
                     neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms, tref_ex = 3 *ms, tref_in = 2 *ms,
@@ -52,7 +55,14 @@ def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neur
     Eex = 0 *mV
     Ein = -75 *mV
     if tau_ax_method != 'distance_dist' : tau_ax = 0.6 *ms # Value should be from 0.3 to 1.3 How should we select it? Here is constant
-    else: mu, sigma = 0.6083279581144256, 0.2890880819677004
+    else: 
+        mean_speed = 300 # um/ms
+        array_distances = np.zeros(1000000)    # um
+        for k in np.arange(len(array_distances)):
+            a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+            b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+            array_distances[k] = np.linalg.norm(a-b) 
+        array_tau_ax = array_distances/mean_speed
     # Constant variables for excitatory population
     Cm_ex = 400 *pF
     gL_ex = 25 *nS
@@ -291,28 +301,29 @@ def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neur
 # --------------------Input connections --------------TAU AX change----------------------
     else:
         Sinput_exex = Synapses(exc_input_to_exc, G_ex, on_pre = eqs_pre_exc_A_ext,
-                                                       delay = tau_exex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                                        method ='euler',
                                                        name = 'Synapses_input_exex')
         Sinput_exex.connect(j='i')
+        Sinput_exex.delay = tau_exex + random.choices(array_tau_ax, k=N_ex)*ms
         
         Sinput_exin = Synapses(inh_input_to_exc, G_ex, on_pre = eqs_pre_exc_G_ext,
-                                                       delay = tau_exin + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                                        method ='euler',
                                                        name = 'Synapses_input_exin')
         Sinput_exin.connect(j='i')
+        Sinput_exin.delay = tau_exin + random.choices(array_tau_ax, k=N_ex)*ms
         
         Sinput_inex = Synapses(exc_input_to_inh, G_in, on_pre = eqs_pre_inh_A_ext,
-                                                       delay = tau_inex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                                        method ='euler',
                                                        name = 'Synapses_input_inex')
         Sinput_inex.connect(j='i')
+        Sinput_inex.delay = tau_inex + random.choices(array_tau_ax, k=N_in)*ms
         
         Sinput_inin = Synapses(inh_input_to_inh, G_in, on_pre = eqs_pre_inh_G_ext,
-                                                       delay = tau_inin + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                                        method ='euler',
                                                        name = 'Synapses_input_inin')
         Sinput_inin.connect(j='i')
+        Sinput_inin.delay = tau_inin + random.choices(array_tau_ax, k=N_in)*ms
+
 # ---------------------------Recurrent connections---------------------------
     if tau_ax_method != 'distance_dist' :
         if dendritic_interactions:
@@ -355,35 +366,35 @@ def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neur
             S_ee = Synapses(G_ex, G_ex, on_pre ={'up': 'n=clip(n+1, 0, inf)', 
                                                  'down': 'n = clip(n-1, 0, inf)',
                                                  'pre': eqs_pre_exc_A_rec},
-                                        delay ={'up':   tau_exex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms + tauDS, 
-                                                'down': tau_exex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms + tauDS + delta_t,
-                                                'pre':  tau_exex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms},
                                         method ='euler',
                                         name = 'Synapses_ee')
         else:
             S_ee = Synapses(G_ex, G_ex, on_pre = eqs_pre_exc_A_rec,
-                                        delay = tau_exex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                         method ='euler',
                                         name = 'Synapses_ee')    
         S_ee.connect(p=p_exex) # Excitatory to excitatory neurons
-        
+        S_ee.pre.delay = tau_exex + random.choices(array_tau_ax, k=len(S_ee.pre.delay))*ms
+        if dendritic_interactions:
+            S_ee.up.delay = tauDS + S_ee.pre.delay
+            S_ee.down.delay = tauDS + delta_t + S_ee.pre.delay
+
         S_ie = Synapses(G_ex, G_in, on_pre = eqs_pre_inh_A_rec,
-                                    delay = tau_inex + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                     method ='euler',
                                     name = 'Synapses_ie')
         S_ie.connect(p=p_inex) # Excitatory to inhibitory neurons
-        
+        S_ie.delay = tau_inex + random.choices(array_tau_ax, k=len(S_ie.delay))*ms 
+
         S_ei = Synapses(G_in, G_ex, on_pre = eqs_pre_exc_G_rec,
-                                    delay = tau_exin + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                     method ='euler',
                                     name = 'Synapses_ei')
         S_ei.connect(p=p_exin) # Inhibitory to excitatory neurons
-        
+        S_ei.delay = tau_exin + random.choices(array_tau_ax, k=len(S_ei.delay))*ms 
+
         S_ii = Synapses(G_in, G_in, on_pre = eqs_pre_inh_G_rec,
-                                    delay = tau_inin + clip(np.random.normal(loc=mu, scale=sigma),0,Inf)*ms,
                                     method ='euler',
                                     name = 'Synapses_ii')
         S_ii.connect(p=p_inin) # Inhibitory to inhibitory neurons
+        S_ii.delay = tau_inin + random.choices(array_tau_ax, k=len(S_ii.delay))*ms 
 
 #    if network_type == 'subpopulation':
 #        # Excitatory subpopulation        
