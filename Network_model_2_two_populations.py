@@ -28,7 +28,7 @@ import random
 
 def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neurons=1000, scale_factor=1, dendritic_interactions=True,
                     neurons_exc = arange(1), neurons_inh=arange(1), tau_exex = 1 *ms, tauDS = 2.7 *ms, tref_ex = 3 *ms, tref_in = 2 *ms,
-                    tau_ax_method = None):
+                    tau_ax_method = None, resolution = 0.001):
     '''
     Function to implement a network with two populations excitatory and inhibitory. 
     Recurrent and inh-exc sznapses on top of external Poissonian spike trains.
@@ -45,7 +45,7 @@ def Network_model_2(seed_num=00, sim_dur=6000*ms, pre_run_dur=100*ms, total_neur
     '''
 # ----------------------------------Initialization---------------------------
     start_scope()
-    defaultclock.dt = 0.001*ms
+    defaultclock.dt = resolution*ms
 
     seed(seed_num)
 # ------------------------------Parameters for populations-------------------------

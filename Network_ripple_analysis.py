@@ -35,26 +35,26 @@ from Network_model_2_two_populations import Network_model_2
 from functions_from_Natalie import f_oscillation_analysis_transient
 # ----------------------------names and folders-------------------------
 
-#path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
-#path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
+path_to_save_figures = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/Plots/'
+path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 #
-path_to_save_figures = '/home/nunez/New_repo/Plots/'
-path_networks = '/home/nunez/New_repo/stored_networks/'
+#path_to_save_figures = '/home/nunez/New_repo/Plots/'
+#path_networks = '/home/nunez/New_repo/stored_networks/'
 #
 #
 ##name_figures = 'network_multiply_rates_by_pop_size_cg_changing'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_6000_network_tauax_change_distrib_1' #Neurons false
+name_network = 'long_50000_network_tauax_change_distrib_1' #Neurons false
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=6000
+dur_simulation=50000
 network, monitors = Network_model_2(seed_num=111, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
                                     scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False,
-                                    tau_ax_method = 'distance_dist')
+                                    tau_ax_method = 'distance_dist', resolution=0.01)
 network.store(name='rand_net', filename = path_networks + name_network)
 
 #network.restore(name='rand_net', filename = path_networks + name_network)
@@ -70,11 +70,11 @@ State_G_in = network.sorted_objects[3]
 G_E = network.sorted_objects[0]
 G_I = network.sorted_objects[1]
 #
-dt = 0.001
+dt = 0.01
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing = 0.5, baseline_start=0, baseline_end=40, plot_peaks=False, dt=dt):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing = 0.5, baseline_start=0, baseline_end=400, plot_peaks=False, dt=dt):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -143,9 +143,9 @@ def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win
             print(i, index)
             event_props[i+1] = {}
             
-            start_event_approx = int(index - 70/dt)
+            start_event_approx = int(index - 50/dt)
             if start_event_approx < 0: start_event_approx = 0
-            end_event_appox = int(index + 70/dt)
+            end_event_appox = int(index + 50/dt)
             
             event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
             time_ranged = time_signal[start_event_approx:end_event_appox]
