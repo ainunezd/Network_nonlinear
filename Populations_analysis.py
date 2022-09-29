@@ -50,15 +50,15 @@ path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 
 #name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_6000_network_3_tauax_change' #Neurons false
+name_network = 'long_50000_network_tauax_change_distrib_1' #Neurons false
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
-## In order to restore the long network it is necessary to first create an object.
+# In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
-dur_simulation=10
+dur_simulation=1
 network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
                                     scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False, 
-                                    tau_ax_method = 'distance_dist')
+                                    tau_ax_method = 'distance_dist', resolution=0.01)
 ##network.store(name='rand_net', filename = path_networks + name_network)
 
 network.restore(name='rand_net', filename = path_networks + name_network)
@@ -74,14 +74,14 @@ State_G_in = network.sorted_objects[3]
 G_E = network.sorted_objects[0]
 G_I = network.sorted_objects[1]
 ##
-dt = 0.001
+dt = 0.01
 cm = 2.54
 
 
-events_dict_ex, simulation_dict_ex = prop_events(net_name_aux = name_network, n_group=G_E, pop_rate_monitor=R_E, pop_spikes_monitor=M_E, pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
-df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
-df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
-df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
+#events_dict_ex, simulation_dict_ex = prop_events(net_name_aux = name_network, n_group=G_E, pop_rate_monitor=R_E, pop_spikes_monitor=M_E, pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
+#df_ex = pd.DataFrame.from_dict(events_dict_ex, orient='index')
+#df_ex.to_csv(path_to_save_figures+f'Properties_events_ex_{name_network}.csv')
+#df_ex.to_pickle(path_to_save_figures+f'Properties_events_ex_{name_network}.pkl')
 
 #events_dict_in, simulation_dict_in = prop_events(n_group=G_I, pop_rate_monitor=R_I, pop_spikes_monitor=M_I, pop_ds_spikes_monitor=M_DS, threshold_in_sd=3, plot_peaks_bool=False)
 #df_in = pd.DataFrame.from_dict(events_dict_in, orient='index')
@@ -117,7 +117,7 @@ def plot_both_population_rates(threshold_in_sd=3, name_net=name_network, smoothi
         pdf.savefig(fig)
 
 
-def get_events_ex_in(name_net):
+def get_events_ex_in(name_net, path_to_save_figures=path_to_save_figures):
     
     data_ex = pd.read_pickle(path_to_save_figures+f'Properties_events_ex_{name_net}.pkl')
     data_in = pd.read_pickle(path_to_save_figures+f'Properties_events_in_{name_net}.pkl')
@@ -341,7 +341,7 @@ def plot_delays_peaks_desdritic_spikes(name_net=name_network):
         pdf.savefig(fig)            
             
             
-def create_dataframe_all_long_networks(net_name = 'long_6000_network_tauax_change_', networks_names =['1', '2', '3']):
+def create_dataframe_all_long_networks(net_name = 'long_50000_network_tauax_change_distrib_', networks_names =['1', '2', '3'], path_to_save_figures=path_to_save_figures):
     '''
     Function to define a huge dataframe with several networks
     
@@ -358,7 +358,8 @@ def create_dataframe_all_long_networks(net_name = 'long_6000_network_tauax_chang
         print(name_network)
         dur_simulation=10
         network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
-                                            scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False)
+                                            scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False, 
+                                            tau_ax_method = 'distance_dist', resolution=0.01)
         network.restore(name='rand_net', filename = path_networks + name_network)
         M_E = network.sorted_objects[24]
         M_I = network.sorted_objects[25]
@@ -370,7 +371,7 @@ def create_dataframe_all_long_networks(net_name = 'long_6000_network_tauax_chang
         G_E = network.sorted_objects[0]
         G_I = network.sorted_objects[1]
         #
-        dt = 0.001
+        dt = 0.01
         cm = 2.54
 
 
@@ -386,7 +387,7 @@ def create_dataframe_all_long_networks(net_name = 'long_6000_network_tauax_chang
         df_in.to_csv(path_to_save_figures+f'Properties_events_in_{name_network}.csv')
         df_in.to_pickle(path_to_save_figures+f'Properties_events_in_{name_network}.pkl')
             
-        events_ex_in = get_events_ex_in(name_net=name_network)    
+        events_ex_in = get_events_ex_in(name_net=name_network, path_to_save_figures=path_to_save_figures)    
             
         df_all_ex = df_all_ex.append(df_ex, ignore_index=True)  
         df_all_in = df_all_in.append(df_in, ignore_index=True)  
@@ -398,7 +399,46 @@ def create_dataframe_all_long_networks(net_name = 'long_6000_network_tauax_chang
     df_all_in.to_pickle(path_to_save_figures+f'Properties_inhibitory_ALL_events_{net_name}.pkl')        
     df_all_ex_in.to_csv(path_to_save_figures+f'Properties_ALL_events_{net_name}.csv')
     df_all_ex_in.to_pickle(path_to_save_figures+f'Properties_ALL_events_{net_name}.pkl')               
-            
+
+def modify_population_dataframes(general_name_networks = 'long_50000_network_tauax_change_distrib_', networks_names =['1', '2', '3'], path_to_save_figures=path_to_save_figures):
+    '''
+    Function to modify the ex and in dataframes wih only the selected events.
+    
+    '''
+    data = []
+    df_selected_ex = pd.DataFrame(data)
+    df_selected_in = pd.DataFrame(data)
+
+    df_all = pd.read_pickle(path_to_save_figures + 'Properties_ALL_events_' + general_name_networks + '.pkl')
+    df_excitatory = pd.read_pickle(path_to_save_figures + 'Properties_exitatory_ALL_events_' + general_name_networks + '.pkl')
+    df_inhibitory = pd.read_pickle(path_to_save_figures + 'Properties_inhibitory_ALL_events_' + general_name_networks + '.pkl')
+    
+    
+    # For loop for all networks
+    for j, num_net in enumerate(networks_names):
+        name_network = general_name_networks + num_net
+        print(name_network)
+        selected_events_ex = df_all[df_all['Name_network']==name_network]['Event_ex'].values
+        selected_dataframe_ex = df_excitatory[df_excitatory['Name_network']==name_network].loc[df_excitatory['Num_event'].isin(selected_events_ex)]
+        df_selected_ex = df_selected_ex.append(selected_dataframe_ex, ignore_index=True)
+        
+        
+        selected_events_in = df_all[df_all['Name_network']==name_network]['Event_in'].values
+        selected_dataframe_in = df_inhibitory[df_inhibitory['Name_network']==name_network].loc[df_inhibitory['Num_event'].isin(selected_events_in)]
+        df_selected_in = df_selected_in.append(selected_dataframe_in, ignore_index=True)        
+        
+    index_3_peaks = df_selected_ex[(df_selected_ex.Num_peaks <= 3) | (df_selected_ex.Mean_frequency < 170) | (df_selected_ex.Mean_frequency > 220)].index    
+    df_selected_ex.drop(index_3_peaks, inplace=True)
+    df_selected_in.drop(index_3_peaks, inplace=True)
+    df_all.drop(index_3_peaks, inplace=True)
+    
+    df_selected_ex.to_csv(path_to_save_figures+f'Properties_exitatory_ALL_events_selected_{general_name_networks}.csv')
+    df_selected_ex.to_pickle(path_to_save_figures+f'Properties_exitatory_ALL_events_selected_{general_name_networks}.pkl')
+    df_selected_in.to_csv(path_to_save_figures+f'Properties_inhibitory_ALL_events_selected_{general_name_networks}.csv')
+    df_selected_in.to_pickle(path_to_save_figures+f'Properties_inhibitory_ALL_events_selected_{general_name_networks}.pkl')        
+    df_all.to_csv(path_to_save_figures+f'Properties_ALL_events_selected_{general_name_networks}.csv')
+    df_all.to_pickle(path_to_save_figures+f'Properties_ALL_events_selected_{general_name_networks}.pkl')
+
 def get_spikes_and_dendritic_spikes(dict_spikes, dict_dendritic_spikes, num_neurons=900):
     '''
     Function to get the previous dendritic spike to a spike
@@ -614,21 +654,20 @@ def plot_correlation_freq_rateHeights(type_population, parameter, value_rates, s
         pdf.savefig(fig)     
     
     
-    
 
 #    
-import random    
-array_distances = np.zeros(1000000)    
-for i in np.arange(len(array_distances)):
-    a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
-    b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
-    array_distances[i] = np.linalg.norm(a-b)
-    
-plt.figure()
-plt.hist(array_distances/300, bins=100, density=True, histtype='step') 
-(mu, sigma) = stats.norm.fit(array_distances/300)   
-array_normal = clip(np.random.normal(loc=mu, scale=sigma, size=1000000), 0, Inf)
-plt.hist(array_normal, bins=100, density=True, histtype='step') 
+#import random    
+#array_distances = np.zeros(1000000)    
+#for i in np.arange(len(array_distances)):
+#    a = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+#    b = np.array([random.uniform(0, 350), random.uniform(0, 350)])
+#    array_distances[i] = np.linalg.norm(a-b)
+#    
+#plt.figure()
+#plt.hist(array_distances/300, bins=100, density=True, histtype='step') 
+#(mu, sigma) = stats.norm.fit(array_distances/300)   
+#array_normal = clip(np.random.normal(loc=mu, scale=sigma, size=1000000), 0, Inf)
+#plt.hist(array_normal, bins=100, density=True, histtype='step') 
 #     mu
 #Out[103]: 182.50546181613075
 #     

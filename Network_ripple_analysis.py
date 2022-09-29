@@ -46,20 +46,20 @@ path_networks = '/home/ana_nunez/Documents/BCCN_berlin/Master_thesis/'
 #
 ##name_network = 'long_baseline_no_dendritic_8'
 #name_network = 'long_random_network_8'
-name_network = 'long_50000_network_tauax_change_distrib_1' #Neurons false
+name_network = 'long_50000_network_tauax_change_distrib_t_ref_ds_3_5ms_3' #Neurons false
 #name_network = 'long_allneurons_event_network_3'  # For the event and all neurons the prerun is 1600 ms. Neurons true
 #
 ## In order to restore the long network it is necessary to first create an object.
 ## Therefore, here I create a network of only 20 ms and on it, I restore the long one.
 dur_simulation=50000
-network, monitors = Network_model_2(seed_num=111, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
+network, monitors = Network_model_2(seed_num=1001, sim_dur=dur_simulation*ms, pre_run_dur=0*ms, total_neurons=1000, 
                                     scale_factor=1, dendritic_interactions=True, neurons_exc = False, neurons_inh = False,
-                                    tau_ax_method = 'distance_dist', resolution=0.01)
+                                    tau_ax_method = 'distance_dist', resolution=0.01, t_ref_ds=3.5*ms)
 network.store(name='rand_net', filename = path_networks + name_network)
-
+#
 #network.restore(name='rand_net', filename = path_networks + name_network)
 
-# Get monitors from the network
+## Get monitors from the network
 M_E = network.sorted_objects[24]
 M_I = network.sorted_objects[25]
 M_DS = network.sorted_objects[-16]
@@ -69,12 +69,12 @@ State_G_ex = network.sorted_objects[2]
 State_G_in = network.sorted_objects[3]
 G_E = network.sorted_objects[0]
 G_I = network.sorted_objects[1]
-#
+##
 dt = 0.01
 cm = 2.54
 
 
-def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing = 0.5, baseline_start=0, baseline_end=400, plot_peaks=False, dt=dt):
+def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing = 0.5, baseline_start=100, baseline_end=400, plot_peaks=False, dt=dt):
     '''
     Function to find the ripple events with in the network
     n_group: Neuron group
@@ -92,7 +92,7 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing 
     rate_signal = pop_rate_monitor.smooth_rate(width=smoothing*ms)*len(n_group) / kHz
 #    thr = mean(rate_signal[:int(400/dt)]) + threshold_in_sd * std(rate_signal) 
     thr = mean(rate_signal[int(baseline_start/dt):int(baseline_end/dt)]) + threshold_in_sd * std(rate_signal) 
-    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 60/dt)
+    peaks, prop = signal.find_peaks(rate_signal, height = thr, distance = 100/dt)
     time = pop_rate_monitor.t / ms
 
     if plot_peaks:
@@ -106,12 +106,12 @@ def find_events(n_group, pop_rate_monitor, threshold_in_sd, name_net, smoothing 
             legend()
             gca().set(xlabel='Time [ms]', ylabel='Rates [kHz]', xlim=(min(time),max(time)))
             savefig(path_to_save_figures + pdf_file_name +'.png')
-            savefig(path_to_save_figures + pdf_file_name +'.eps')
+#            savefig(path_to_save_figures + pdf_file_name +'.eps')
             pdf.savefig(fig)
 
     return time, rate_signal, peaks
 
-def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.5, baseline_start=100, baseline_end=400, plot_peaks_bool=False):
+def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win=0.5, baseline_start=0, baseline_end=400, plot_peaks_bool=False):
     '''
     Function to define the start, end and therefore duration of a ripple event
     n_group: Neuron group
@@ -143,9 +143,9 @@ def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win
             print(i, index)
             event_props[i+1] = {}
             
-            start_event_approx = int(index - 50/dt)
+            start_event_approx = int(index - 70/dt)
             if start_event_approx < 0: start_event_approx = 0
-            end_event_appox = int(index + 50/dt)
+            end_event_appox = int(index + 70/dt)
             
             event_ranged = pop_rate_signal[start_event_approx:end_event_appox]
             time_ranged = time_signal[start_event_approx:end_event_appox]
@@ -153,10 +153,10 @@ def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win
             peaks, prop = signal.find_peaks(event_ranged, height = thr_2sd, distance = 3/dt, prominence=0.5)
             peaks_2, prop_2 = signal.find_peaks(event_ranged, height = baseline, distance = 3/dt, prominence=0.5)
             index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
-            outliers = np.where(diff(peaks)>8000)[0]
+            outliers = np.where(diff(peaks)>int(8/dt))[0]
             if sum(outliers<index_peak_max) > 0: peaks = peaks[outliers[outliers<index_peak_max][-1]+1:]
             index_peak_max = np.where(time_ranged[peaks] == time_ranged[index-start_event_approx])[0][0]
-            outliers_2 = np.where(diff(peaks)>8000)[0]
+            outliers_2 = np.where(diff(peaks)>int(8/dt))[0]
             if sum(outliers_2>=index_peak_max) > 0: peaks = peaks[:outliers_2[0]+1]
             if len(peaks)<2: 
                 del event_props[i+1]
@@ -175,6 +175,7 @@ def define_event(net_name,n_group, pop_rate_monitor, threshold_in_sd, smooth_win
             event = event_ranged[start_index_event:end_index_event]
             
             event_props[i+1]['Name_network'] = net_name
+            event_props[i+1]['Num_event'] = i+1
             event_props[i+1]['Max_peak_time'] = np.round(index*dt,3)
             event_props[i+1]['Time_array'] = time_event
             event_props[i+1]['Signal_array'] = event
